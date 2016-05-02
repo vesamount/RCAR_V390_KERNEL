@@ -40,6 +40,7 @@ Optional properties:
 			    <0x0> (default) : Peripheral clock (clkp1)
 			    <0x1> : Peripheral clock (clkp2)
 			    <0x3> : Externally input clock
+- gpios: GPIO used for controlling the enable pin and standby pin
 
 Example
 -------
@@ -61,5 +62,8 @@ Board specific .dts file:
 &can0 {
 	pinctrl-0 = <&can0_pins>;
 	pinctrl-names = "default";
+	gpios = <&gpio5 29 GPIO_ACTIVE_HIGH /* enable */
+		 &gpio5 30 GPIO_ACTIVE_LOW /* standby */
+		>;
 	status = "okay";
 };

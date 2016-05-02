@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/can/platform/rcar_can.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 
 #define RCAR_CAN_DRV_NAME	"rcar_can"
 
@@ -94,6 +95,8 @@ struct rcar_can_priv {
 	u32 tx_tail;
 	u8 clock_select;
 	u8 ier;
+	unsigned int enable_pin; /* transceiver enable */
+	unsigned int standby_pin; /* transceiver standby */
 };
 
 static const struct can_bittiming_const rcar_can_bittiming_const = {
@@ -505,6 +508,10 @@ static int rcar_can_open(struct net_device *ndev)
 	struct rcar_can_priv *priv = netdev_priv(ndev);
 	int err;
 
+	/* transceiver normal mode */
+	if (gpio_is_valid(priv->standby_pin))
+		gpio_set_value(priv->standby_pin, 1);
+
 	err = clk_prepare_enable(priv->clk);
 	if (err) {
 		netdev_err(ndev,
@@ -581,6 +588,9 @@ static int rcar_can_close(struct net_device *ndev)
 	clk_disable_unprepare(priv->clk);
 	close_candev(ndev);
 	can_led_event(ndev, CAN_LED_EVENT_STOP);
+	/* transceiver stanby mode */
+	if (gpio_is_valid(priv->standby_pin))
+		gpio_set_value(priv->standby_pin, 0);
 	return 0;
 }
 
@@ -743,20 +753,9 @@ static int rcar_can_probe(struct platform_device *pdev)
 	struct resource *mem;
 	void __iomem *addr;
 	u32 clock_select = CLKR_CLKP1;
-	int err = -ENODEV;
+	int err = -ENODEV, ret;
 	int irq;
-
-	if (pdev->dev.of_node) {
-		of_property_read_u32(pdev->dev.of_node,
-				     "renesas,can-clock-select", &clock_select);
-	} else {
-		pdata = dev_get_platdata(&pdev->dev);
-		if (!pdata) {
-			dev_err(&pdev->dev, "No platform data provided!\n");
-			goto fail;
-		}
-		clock_select = pdata->clock_select;
-	}
+	enum of_gpio_flags enable_flags, standby_flags;
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
@@ -825,6 +824,39 @@ static int rcar_can_probe(struct platform_device *pdev)
 	}
 
 	devm_can_led_init(ndev);
+
+	if (pdev->dev.of_node) {
+		of_property_read_u32(pdev->dev.of_node,
+				     "renesas,can-clock-select", &clock_select);
+		priv->enable_pin = of_get_gpio_flags(pdev->dev.of_node, 0, &enable_flags);
+		priv->standby_pin = of_get_gpio_flags(pdev->dev.of_node, 1, &standby_flags);
+	} else {
+		pdata = dev_get_platdata(&pdev->dev);
+		if (!pdata) {
+			dev_err(&pdev->dev, "No platform data provided!\n");
+			goto fail;
+		}
+		clock_select = pdata->clock_select;
+		priv->enable_pin = pdata->enable_pin;
+		priv->standby_pin = pdata->standby_pin;
+	}
+
+	if (gpio_is_valid(priv->enable_pin)) {
+		int val = enable_flags & OF_GPIO_ACTIVE_LOW ?
+			  GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+		ret = devm_gpio_request_one(&pdev->dev, priv->enable_pin, val, "enable");
+		if (ret)
+			dev_info(&pdev->dev, "Failed to request enable pin\n");
+	}
+
+	if (gpio_is_valid(priv->standby_pin)) {
+		int val = standby_flags & OF_GPIO_ACTIVE_LOW ?
+			  GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+		/* transceiver standby mode */
+		ret = devm_gpio_request_one(&pdev->dev, priv->standby_pin, val, "standby");
+		if (ret)
+			dev_info(&pdev->dev, "Failed to request standby pin\n");
+	}
 
 	dev_info(&pdev->dev, "device registered (IRQ%d)\n", ndev->irq);
 

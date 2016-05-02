@@ -13,6 +13,8 @@ enum CLKR {
 
 struct rcar_can_platform_data {
 	enum CLKR clock_select;	/* Clock source select */
+	unsigned int enable_pin;
+	unsigned int standby_pin;
 };
 
 #endif	/* !_CAN_PLATFORM_RCAR_CAN_H_ */
