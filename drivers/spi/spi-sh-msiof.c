@@ -253,11 +253,11 @@ static int sh_msiof_modify_ctr_wait(struct sh_msiof_spi_priv *p,
 	data |= set;
 	sh_msiof_write(p, CTR, data);
 
-	for (k = 100; k > 0; k--) {
+	for (k = 1000; k > 0; k--) {
 		if ((sh_msiof_read(p, CTR) & mask) == set)
 			break;
 
-		udelay(10);
+		udelay(1);
 	}
 
 	return k > 0 ? 0 : -ETIMEDOUT;
