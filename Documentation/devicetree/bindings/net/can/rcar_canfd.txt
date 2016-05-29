@@ -17,6 +17,7 @@ Required properties:
 - clock-names: 3 clock input name strings: "fck", "canfd", "can_clk".
 - pinctrl-0: pin control group to be used for this controller.
 - pinctrl-names: must be "default".
+- gpios: GPIO used for controlling the enable pin and standby pin
 
 Required child nodes:
 The controller supports two channels and each is represented as a child node.
@@ -59,6 +60,10 @@ SoC common .dtsi file:
 			assigned-clock-rates = <40000000>;
 			power-domains = <&cpg>;
 			status = "disabled";
+
+			gpios = <&gpio5 29 GPIO_ACTIVE_HIGH /* enable */
+				 &gpio5 30 GPIO_ACTIVE_LOW /* standby */
+				>;
 
 			channel0 {
 				status = "disabled";
