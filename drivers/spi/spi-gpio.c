@@ -289,7 +289,7 @@ static int spi_gpio_alloc(unsigned pin, const char *label, bool is_in)
 		if (is_in)
 			value = gpio_direction_input(pin);
 		else
-			value = gpio_direction_output(pin, 0);
+			value = gpio_direction_output(pin, 1);
 	}
 	return value;
 }
