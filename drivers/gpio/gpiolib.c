@@ -2669,7 +2669,9 @@ void gpiod_set_raw_value(struct gpio_desc *desc, int value)
 {
 	VALIDATE_DESC_VOID(desc);
 	/* Should be using gpiod_set_value_cansleep() */
+#if 0
 	WARN_ON(desc->gdev->chip->can_sleep);
+#endif
 	_gpiod_set_raw_value(desc, value);
 }
 EXPORT_SYMBOL_GPL(gpiod_set_raw_value);
