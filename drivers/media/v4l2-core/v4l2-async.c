@@ -225,6 +225,10 @@ static int v4l2_async_match_notify(struct v4l2_async_notifier *notifier,
 	/* Move from the global subdevice list to notifier's done */
 	list_move(&sd->async_list, &notifier->done);
 
+	ret = v4l2_subdev_call(sd, core, registered_async);
+	if (ret < 0 && ret != -ENOIOCTLCMD)
+		return ret;
+
 	/*
 	 * See if the sub-device has a notifier. If not, return here.
 	 */
