@@ -342,37 +342,6 @@
 	};
 };
 
-&csi20 {
-	status = "okay";
-
-	ports {
-		port@0 {
-			reg = <0>;
-			csi20_in: endpoint {
-				clock-lanes = <0>;
-				data-lanes = <1>;
-				remote-endpoint = <&adv7482_txb>;
-			};
-		};
-	};
-};
-
-&csi40 {
-	status = "okay";
-
-	ports {
-		port@0 {
-			reg = <0>;
-
-			csi40_in: endpoint {
-				clock-lanes = <0>;
-				data-lanes = <1 2 3 4>;
-				remote-endpoint = <&adv7482_txa>;
-			};
-		};
-	};
-};
-
 &a57_0 {
 	cpu-supply = <&dvfs>;
 };
@@ -504,7 +473,6 @@
 			adv7482_txa: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2 3 4>;
-				remote-endpoint = <&csi40_in>;
 			};
 		};
 
@@ -514,7 +482,6 @@
 			adv7482_txb: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1>;
-				remote-endpoint = <&csi20_in>;
 			};
 		};
 	};
