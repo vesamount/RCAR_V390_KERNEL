@@ -398,6 +398,7 @@ static int __v4l2_async_notifier_register(struct v4l2_async_notifier *notifier)
 		case V4L2_ASYNC_MATCH_I2C:
 			break;
 		case V4L2_ASYNC_MATCH_FWNODE:
+#if 0
 			if (v4l2_async_notifier_fwnode_has_async_subdev(
 				    notifier, asd->match.fwnode.fwnode, i)) {
 				dev_err(dev,
@@ -405,6 +406,7 @@ static int __v4l2_async_notifier_register(struct v4l2_async_notifier *notifier)
 				ret = -EEXIST;
 				goto err_unlock;
 			}
+#endif
 			break;
 		default:
 			dev_err(dev, "Invalid match type %u on %p\n",

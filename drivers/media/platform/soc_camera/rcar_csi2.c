@@ -20,24 +20,29 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/io.h>
+#include <linux/of_graph.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <linux/module.h>
+#include <linux/sys_soc.h>
 
 #include <media/rcar_csi2.h>
 #include <media/soc_camera.h>
+#include <media/v4l2-async.h>
+#include <media/v4l2-fwnode.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 
-#include <media/v4l2-of.h>
+#include <media/v4l2-fwnode.h>
+
+//#define RCAR_CSI2_DUMP
 
 #define DRV_NAME "rcar_csi2"
-#define CONNECT_SLAVE_NAME "adv7482"
 #define VC_MAX_CHANNEL		4
 
 #define RCAR_CSI2_TREF		0x00
@@ -62,12 +67,17 @@
 
 #define RCAR_CSI2_LINKCNT		0x48
 #define RCAR_CSI2_LSWAP			0x4C
+#define RCAR_CSI2_PHTW			0x50
 #define RCAR_CSI2_PHTC			0x58
 #define RCAR_CSI2_PHYPLL		0x68
 
 #define RCAR_CSI2_PHEERM		0x74
 #define RCAR_CSI2_PHCLM			0x78
 #define RCAR_CSI2_PHDLM			0x7C
+
+#define RCAR_CSI2_CSI0CLKFCPR		0x254 /* CSI0CLK Frequency Configuration Preset */
+/* CSI0CLK frequency configuration bit */
+#define CSI0CLKFREQRANGE(n)		((n & 0x3f) << 16)
 
 #define RCAR_CSI2_PHYCNT_SHUTDOWNZ		(1 << 17)
 #define RCAR_CSI2_PHYCNT_RSTZ			(1 << 16)
@@ -104,6 +114,9 @@
 #define RCAR_CSI2_LSWAP_L0SEL_PLANE1		(1 << 0)
 #define RCAR_CSI2_LSWAP_L0SEL_PLANE2		(2 << 0)
 #define RCAR_CSI2_LSWAP_L0SEL_PLANE3		(3 << 0)
+
+#define RCAR_CSI2_PHTW_DWEN			(1 << 24)
+#define RCAR_CSI2_PHTW_CWEN			(1 << 8)
 
 #define RCAR_CSI2_PHTC_TESTCLR			(1 << 0)
 
@@ -153,6 +166,16 @@
 #define RCAR_CSI2_INTSTATE_ERRSYNCESC		(1 << 1)
 #define RCAR_CSI2_INTSTATE_ERRCONTROL		(1 << 0)
 
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
+
+static const struct soc_device_attribute r8a7795[] = {
+	{ .soc_id = "r8a7795", .revision = "ES2.0" },
+	{ }
+};
+
 enum chip_id {
 	RCAR_GEN3,
 	RCAR_GEN2,
@@ -173,6 +196,7 @@ struct rcar_csi2_link_config {
 	unsigned char lanes;
 	unsigned long vcdt;
 	unsigned long vcdt2;
+	unsigned int csi_rate;
 };
 
 #define INIT_RCAR_CSI2_LINK_CONFIG(m) \
@@ -186,8 +210,7 @@ struct rcar_csi_irq_counter_log {
 };
 
 struct rcar_csi2 {
-	struct v4l2_subdev		subdev;
-	struct v4l2_mbus_framefmt	*mf;
+	struct v4l2_subdev		subdev[4];
 	unsigned int			irq;
 	unsigned long			mipi_flags;
 	void __iomem			*base;
@@ -199,7 +222,9 @@ struct rcar_csi2 {
 	unsigned int			field;
 	unsigned int			code;
 	unsigned int			lanes;
+	unsigned int			csi_rate;
 	spinlock_t			lock;
+	atomic_t			use_count;
 };
 
 #define RCAR_CSI_80MBPS		0
@@ -245,10 +270,104 @@ struct rcar_csi2 {
 #define RCAR_CSI_1400MBPS	40
 #define RCAR_CSI_1450MBPS	41
 #define RCAR_CSI_1500MBPS	42
+#define RCAR_CSI_NUMRATES	43
+
+#define RCAR_CSI2_PHxM0(i)		(0xf0 + i * 0x08)
+#define RCAR_CSI2_PHxM1(i)		(0xf4 + i * 0x08)
+#define RCAR_CSI2_PHRM(i)		(0x110 + i * 0x04)
+#define RCAR_CSI2_PHCM(i)		(0x120 + i * 0x04)
+#define RCAR_CSI2_SERCCNT		0x140
+#define RCAR_CSI2_SSERCCNT		0x144
+#define RCAR_CSI2_ECCCM			0x148
+#define RCAR_CSI2_ECECM			0x14c
+#define RCAR_CSI2_CRCECM		0x150
+#define RCAR_CSI2_LCNT(i)		(0x160 + i * 0x04)
+#define RCAR_CSI2_LCNTM(i)		(0x168 + i * 0x04)
+#define RCAR_CSI2_FCNTM			0x170
+#define RCAR_CSI2_FCNTM2		0x174
+#define RCAR_CSI2_VINSM(i)		(0x190 + i * 0x04)
+#define RCAR_CSI2_PHM(i)		(0x1C0 + i * 0x04)
+
+#define RCAR_CSI2_INTSTATE_ALL		0x3FFFFCDD
+
+#ifdef RCAR_CSI2_DUMP
+static void rcar_sci2_debug_show(struct rcar_csi2 *priv)
+{
+	int i;
+	u32 reg0, reg1;
+
+	printk("Debug registers:\n");
+	printk("FCNTM : 0x%08x\n", ioread32(priv->base + RCAR_CSI2_FCNTM));
+	printk("FCNTM2: 0x%08x\n", ioread32(priv->base + RCAR_CSI2_FCNTM2));
+
+	for (i = 0; i < 4; i++) {
+		reg0 = ioread32(priv->base + RCAR_CSI2_PHxM0(i));
+		reg1 = ioread32(priv->base + RCAR_CSI2_PHxM1(i));
+
+		printk("Packet header %d: dt: 0x%02x, vc: %d, wc: %d, cnt: %d\n",
+			i,
+			reg0 & 0x3F, (reg0 >> 6) & 0x03, (reg0 >> 8) & 0xffff,
+			reg1 & 0xffff);
+	}
+	for (i = 0; i < 3; i++) {
+		reg0 = ioread32(priv->base + RCAR_CSI2_PHRM(i));
+
+		printk("Packet header R %d dt: 0x%02x, vc: %d, wc: %d, ecc: 0x%02x\n",
+			i,
+			reg0 & 0x3F, (reg0 >> 6) & 0x03, (reg0 >> 8) & 0xffff,
+			(reg0 >> 24) & 0xff);
+	}
+	for (i = 0; i < 2; i++) {
+		reg0 = ioread32(priv->base + RCAR_CSI2_PHCM(i));
+
+		printk("Packet header C %d: dt: 0x%02x, vc: %d, wc: %d, cal_parity: 0x%02x\n",
+			i,
+			reg0 & 0x3F, (reg0 >> 6) & 0x03, (reg0 >> 8) & 0xffff,
+			(reg0 >> 24) & 0xff);
+	}
+	for (i = 0; i < 8; i++) {
+		reg0 = ioread32(priv->base + RCAR_CSI2_PHM(i));
+
+		printk("Packet header Monitor %d: dt: 0x%02x, vc: %d, wc: %d, ecc: 0x%02x\n",
+			i + 1,
+			reg0 & 0x3F, (reg0 >> 6) & 0x03, (reg0 >> 8) & 0xffff,
+			(reg0 >> 24) & 0xff);
+	}
+	for (i = 0; i < 3; i++)
+		printk("VINSM%d: 0x%08x\n", i, ioread32(priv->base + RCAR_CSI2_VINSM(i)));
+	printk("SERCCNT: %d\n",
+		ioread32(priv->base + RCAR_CSI2_SERCCNT));
+	printk("SSERCCNT: %d\n",
+		ioread32(priv->base + RCAR_CSI2_SSERCCNT));
+	printk("ECCCM: %d\n",
+		ioread32(priv->base + RCAR_CSI2_ECCCM));
+	printk("ECECM: %d\n",
+		ioread32(priv->base + RCAR_CSI2_ECECM));
+	printk("CRCECM: %d\n",
+		ioread32(priv->base + RCAR_CSI2_CRCECM));
+	for (i = 0; i < 2; i++)
+		printk("LCNT%d: 0x%08x\n", i, ioread32(priv->base + RCAR_CSI2_LCNT(i)));
+	for (i = 0; i < 2; i++)
+		printk("LCNTM%d: 0x%08x\n", i, ioread32(priv->base + RCAR_CSI2_LCNTM(i)));
+}
+#else
+#define rcar_sci2_debug_show(args)
+#endif /* RCAR_CSI2_DUMP */
 
 static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 {
-	const uint32_t const hs_freq_range[43] = {
+	const uint32_t hs_freq_range_v3m[43] = {
+		0x00, 0x00, 0x20, 0x40, 0x02,	/* 80M, 90M, 100M, 110M, 120M */
+		0x02, 0x22, 0x42, 0x04, 0x04,	/* 130M, 140M, 150M, 160M, 170M */
+		0x24, 0x44, 0x44, 0x06, 0x26,	/* 180M, 190M, 205M, 220M, 235M */
+		0x46, 0x08, 0x28, 0x0a, 0x2a,	/* 250M, 270M, 300M, 325M, 350M */
+		0x4a, 0x4a, 0x4a, 0x4a, 0x4a,	/* 400M, 450M, 500M, 550M, 600M */
+		0x10, 0x30, 0x12, 0x32, 0x52,	/* 650M, 700M, 750M, 800M, 950M */
+		0x72, 0x14, 0x34, 0x52, 0x74,	/* 900M, 950M, 1000M, 1050M, 1100M */
+		0x16, 0x36, 0x56, 0x76, 0x18,	/* 1150M, 1200M, 1250M, 1300M, 1350M */
+		0x38, 0x58, 0x78		/* 1400M, 1450M, 1500M */
+	};
+	const uint32_t hs_freq_range_m3[43] = {
 		0x00, 0x10, 0x20, 0x30, 0x01,  /* 0-4   */
 		0x11, 0x21, 0x31, 0x02, 0x12,  /* 5-9   */
 		0x22, 0x32, 0x03, 0x13, 0x23,  /* 10-14 */
@@ -259,60 +378,49 @@ static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 		0x0B, 0x1B, 0x2B, 0x3B, 0x0C,  /* 35-39 */
 		0x1C, 0x2C, 0x3C               /* 40-42 */
 	};
+	const uint32_t hs_freq_range_h3[43] = {
+		0x00, 0x10, 0x20, 0x30, 0x01,  /* 0-4   */
+		0x11, 0x21, 0x31, 0x02, 0x12,  /* 5-9   */
+		0x22, 0x32, 0x03, 0x13, 0x23,  /* 10-14 */
+		0x33, 0x04, 0x14, 0x25, 0x35,  /* 15-19 */
+		0x05, 0x26, 0x36, 0x37, 0x07,  /* 20-24 */
+		0x18, 0x28, 0x39, 0x09, 0x19,  /* 25-29 */
+		0x29, 0x3A, 0x0A, 0x1A, 0x2A,  /* 30-34 */
+		0x3B, 0x0B, 0x1B, 0x2B, 0x3C,  /* 35-39 */
+		0x0C, 0x1C, 0x2C               /* 40-42 */
+	};
+	const uint32_t csi2_rate_range[43] = {
+		80, 90, 100, 110, 120,		/* 0-4   */
+		130, 140, 150, 160, 170,	/* 5-9   */
+		180, 190, 205, 220, 235,	/* 10-14 */
+		250, 275, 300, 325, 350,	/* 15-19 */
+		400, 450, 500, 550, 600,	/* 20-24 */
+		650, 700, 750, 800, 850,	/* 25-29 */
+		900, 950, 1000, 1050, 1100,	/* 30-34 */
+		1150, 1200, 1250, 1300, 1350,	/* 35-39 */
+		1400, 1450, 1500		/* 40-42 */
+	};
 	uint32_t bps_per_lane = RCAR_CSI_190MBPS;
 
-	dev_dbg(&priv->pdev->dev, "Input size (%dx%d%c)\n",
-			 priv->mf->width, priv->mf->height,
-			 (priv->mf->field == V4L2_FIELD_NONE) ? 'p' : 'i');
-
-	switch (priv->lanes) {
-	case 1:
-		bps_per_lane = RCAR_CSI_400MBPS;
-		break;
-	case 4:
-		if (priv->mf->field == V4L2_FIELD_NONE) {
-			if ((priv->mf->width == 1920) &&
-				(priv->mf->height == 1080))
-				bps_per_lane = RCAR_CSI_900MBPS;
-			else if ((priv->mf->width == 1280) &&
-				 (priv->mf->height == 720))
-				bps_per_lane = RCAR_CSI_450MBPS;
-			else if ((priv->mf->width == 720) &&
-				 (priv->mf->height == 480))
-				bps_per_lane = RCAR_CSI_190MBPS;
-			else if ((priv->mf->width == 720) &&
-				 (priv->mf->height == 576))
-				bps_per_lane = RCAR_CSI_190MBPS;
-			else if ((priv->mf->width == 640) &&
-				 (priv->mf->height == 480))
-				bps_per_lane = RCAR_CSI_100MBPS;
-			else
-				goto error;
-		} else {
-			if ((priv->mf->width == 1920) &&
-				(priv->mf->height == 1080))
-				bps_per_lane = RCAR_CSI_450MBPS;
-			else
-				goto error;
-		}
-		break;
-	default:
-		dev_err(&priv->pdev->dev, "ERROR: lanes is invalid (%d)\n",
-								 priv->lanes);
-		return -EINVAL;
+	for (bps_per_lane = 0; bps_per_lane < RCAR_CSI_NUMRATES; bps_per_lane++) {
+		if (priv->csi_rate <= csi2_rate_range[bps_per_lane])
+			break;
 	}
 
 	dev_dbg(&priv->pdev->dev, "bps_per_lane (%d)\n", bps_per_lane);
 
-	iowrite32((hs_freq_range[bps_per_lane] << 16),
+	if (soc_device_match(r8a7797))
+		iowrite32((hs_freq_range_v3m[bps_per_lane] << 16) |
+				RCAR_CSI2_PHTW_DWEN | RCAR_CSI2_PHTW_CWEN | 0x44,
+				priv->base + RCAR_CSI2_PHTW);
+	else if (soc_device_match(r8a7795))
+		iowrite32(hs_freq_range_h3[bps_per_lane] << 16,
+				priv->base + RCAR_CSI2_PHYPLL);
+	else
+		/* h3 ws1.x is similar to m3 */
+		iowrite32(hs_freq_range_m3[bps_per_lane] << 16,
 				priv->base + RCAR_CSI2_PHYPLL);
 	return 0;
-
-error:
-	dev_err(&priv->pdev->dev, "Not support resolution (%dx%d%c)\n",
-		 priv->mf->width, priv->mf->height,
-		 (priv->mf->field == V4L2_FIELD_NONE) ? 'p' : 'i');
-	return -EINVAL;
 }
 
 static irqreturn_t rcar_csi2_irq(int irq, void *data)
@@ -370,6 +478,16 @@ static int rcar_csi2_hwinit(struct rcar_csi2 *priv)
 			iowrite32(0x0001000f, priv->base + RCAR_CSI2_FLD);
 			tmp |= 0x1;
 			break;
+		case 2:
+			/* First field number setting */
+			iowrite32(0x0001000f, priv->base + RCAR_CSI2_FLD);
+			tmp |= 0x3;
+			break;
+		case 3:
+			/* First field number setting */
+			iowrite32(0x0001000f, priv->base + RCAR_CSI2_FLD);
+			tmp |= 0x7;
+			break;
 		case 4:
 			/* First field number setting */
 			iowrite32(0x0002000f, priv->base + RCAR_CSI2_FLD);
@@ -382,10 +500,26 @@ static int rcar_csi2_hwinit(struct rcar_csi2 *priv)
 			return -EINVAL;
 		}
 
+		if (soc_device_match(r8a7795)) {
+			/* Set PHY Test Interface Write Register in R-Car H3(ES2.0) */
+			iowrite32(0x01cc01e2, priv->base + RCAR_CSI2_PHTW);
+			iowrite32(0x010101e3, priv->base + RCAR_CSI2_PHTW);
+			iowrite32(0x010101e4, priv->base + RCAR_CSI2_PHTW);
+			iowrite32(0x01100104, priv->base + RCAR_CSI2_PHTW);
+			iowrite32(0x01030100, priv->base + RCAR_CSI2_PHTW);
+			iowrite32(0x01800107, priv->base + RCAR_CSI2_PHTW);
+		}
+
 		/* set PHY frequency */
 		ret = rcar_csi2_set_phy_freq(priv);
 		if (ret < 0)
 			return ret;
+
+		/* Set CSI0CLK Frequency Configuration Preset Register
+		 * in R-Car H3(ES2.0)
+		 */
+		if (soc_device_match(r8a7795))
+			iowrite32(CSI0CLKFREQRANGE(32), priv->base + RCAR_CSI2_CSI0CLKFCPR);
 
 		/* Enable lanes */
 		iowrite32(tmp, priv->base + RCAR_CSI2_PHYCNT);
@@ -447,32 +581,22 @@ static int rcar_csi2_hwinit(struct rcar_csi2 *priv)
 
 static int rcar_csi2_s_power(struct v4l2_subdev *sd, int on)
 {
-	struct rcar_csi2 *priv = container_of(sd, struct rcar_csi2, subdev);
-	struct v4l2_subdev *tmp_sd;
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
-	struct v4l2_mbus_framefmt *mf = &fmt.format;
+	struct rcar_csi2 *priv = v4l2_get_subdevdata(sd);
 	int ret = 0;
 
 	if (on) {
-		v4l2_device_for_each_subdev(tmp_sd, sd->v4l2_dev) {
-			if (strncmp(tmp_sd->name, CONNECT_SLAVE_NAME,
-				sizeof(CONNECT_SLAVE_NAME) - 1) == 0) {
-				v4l2_subdev_call(tmp_sd, pad, get_fmt,
-							 NULL, &fmt);
-				if (ret < 0)
-					return ret;
-			}
+		if (atomic_inc_return(&priv->use_count) == 1) {
+			pm_runtime_get_sync(&priv->pdev->dev);
+			ret = rcar_csi2_hwinit(priv);
+			if (ret < 0)
+				return ret;
 		}
-		priv->mf = mf;
-		pm_runtime_get_sync(&priv->pdev->dev);
-		ret = rcar_csi2_hwinit(priv);
-		if (ret < 0)
-			return ret;
 	} else {
-		rcar_csi2_hwdeinit(priv);
-		pm_runtime_put_sync(&priv->pdev->dev);
+		if (atomic_dec_return(&priv->use_count) == 0) {
+			rcar_sci2_debug_show(priv);
+			rcar_csi2_hwdeinit(priv);
+			pm_runtime_put_sync(&priv->pdev->dev);
+		}
 	}
 
 	return ret;
@@ -488,6 +612,7 @@ static struct v4l2_subdev_ops rcar_csi2_subdev_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_csi2_of_table[] = {
+	{ .compatible = "renesas,r8a7797-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7796-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7795-csi2", .data = (void *)RCAR_GEN3 },
 	{ },
@@ -496,6 +621,7 @@ MODULE_DEVICE_TABLE(of, rcar_csi2_of_table);
 #endif
 
 static struct platform_device_id rcar_csi2_id_table[] = {
+	{ "r8a7797-csi2",  RCAR_GEN3 },
 	{ "r8a7796-csi2",  RCAR_GEN3 },
 	{ "r8a7795-csi2",  RCAR_GEN3 },
 	{},
@@ -505,7 +631,7 @@ MODULE_DEVICE_TABLE(platform, rcar_csi2_id_table);
 static int rcar_csi2_parse_dt(struct device_node *np,
 			struct rcar_csi2_link_config *config)
 {
-	struct v4l2_of_endpoint bus_cfg;
+	struct v4l2_fwnode_endpoint bus_cfg;
 	struct device_node *endpoint;
 	struct device_node *vc_np, *vc_ch;
 	const char *str;
@@ -518,19 +644,20 @@ static int rcar_csi2_parse_dt(struct device_node *np,
 	if (!endpoint)
 		return -EINVAL;
 
-	v4l2_of_parse_endpoint(endpoint, &bus_cfg);
+	v4l2_fwnode_endpoint_parse(of_fwnode_handle(endpoint), &bus_cfg);
+	ret = of_property_read_u32(endpoint, "csi-rate", &config->csi_rate);
+	if (ret < 0) {
+		printk(KERN_ERR "csi-rate not set\n");
+		return ret;
+	}
 	of_node_put(endpoint);
 
 	config->lanes = bus_cfg.bus.mipi_csi2.num_data_lanes;
 
-	ret = of_property_read_string(np, "adi,input-interface", &str);
-	if (ret < 0)
-		return ret;
-
 	vc_np = of_get_child_by_name(np, "virtual,channel");
 
-	config->vcdt = 0;
-	config->vcdt2 = 0;
+	config->vcdt = 0x81008000;
+	config->vcdt2 = 0x83008200;
 	for (i = 0; i < VC_MAX_CHANNEL; i++) {
 		sprintf(csi_name, "csi2_vc%d", i);
 
@@ -549,6 +676,8 @@ static int rcar_csi2_parse_dt(struct device_node *np,
 				config->vcdt |= (0x24 << (i * 16));
 			else if (!strcmp(str, "ycbcr422"))
 				config->vcdt |= (0x1e << (i * 16));
+			else if (!strcmp(str, "raw8"))
+				config->vcdt |= (0x2a << (i * 16));
 			else
 				config->vcdt |= 0;
 
@@ -563,6 +692,8 @@ static int rcar_csi2_parse_dt(struct device_node *np,
 				config->vcdt2 |= (0x24 << (j * 16));
 			else if (!strcmp(str, "ycbcr422"))
 				config->vcdt2 |= (0x1e << (j * 16));
+			else if (!strcmp(str, "raw8"))
+				config->vcdt2 |= (0x2a << (j * 16));
 			else
 				config->vcdt2 |= 0;
 
@@ -584,6 +715,7 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 	/* Platform data specify the PHY, lanes, ECC, CRC */
 	struct rcar_csi2_pdata *pdata;
 	struct rcar_csi2_link_config link_config;
+	int i;
 
 	dev_dbg(&pdev->dev, "CSI2 probed.\n");
 
@@ -594,12 +726,7 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 		if (ret)
 			return ret;
 
-		if (link_config.lanes == 4)
-			dev_info(&pdev->dev,
-				"Detected rgb888 in rcar_csi2_parse_dt\n");
-		else
-			dev_info(&pdev->dev,
-				"Detected YCbCr422 in rcar_csi2_parse_dt\n");
+		dev_info(&pdev->dev, "Data lanes %d, link freq %d\n", link_config.lanes, link_config.csi_rate);
 	} else {
 		pdata = pdev->dev.platform_data;
 		if (!pdata)
@@ -631,23 +758,27 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 		return ret;
 
 	priv->pdev = pdev;
-	priv->subdev.owner = THIS_MODULE;
-	priv->subdev.dev = &pdev->dev;
 	priv->lanes = link_config.lanes;
 	priv->vcdt = link_config.vcdt;
 	priv->vcdt2 = link_config.vcdt2;
+	priv->csi_rate = link_config.csi_rate;
+	atomic_set(&priv->use_count, 0);
 
-	platform_set_drvdata(pdev, &priv->subdev);
+	platform_set_drvdata(pdev, priv);
 
-	v4l2_subdev_init(&priv->subdev, &rcar_csi2_subdev_ops);
-	v4l2_set_subdevdata(&priv->subdev, &pdev->dev);
+	for (i= 0; i < 4; i++) {
+		priv->subdev[i].owner = THIS_MODULE;
+		priv->subdev[i].dev = &pdev->dev;
+		v4l2_subdev_init(&priv->subdev[i], &rcar_csi2_subdev_ops);
+		v4l2_set_subdevdata(&priv->subdev[i], priv);
 
-	snprintf(priv->subdev.name, V4L2_SUBDEV_NAME_SIZE, "rcar_csi2.%s",
-		 dev_name(&pdev->dev));
+		snprintf(priv->subdev[i].name, V4L2_SUBDEV_NAME_SIZE, "rcar_csi2.%s",
+			 dev_name(&pdev->dev));
 
-	ret = v4l2_async_register_subdev(&priv->subdev);
-	if (ret < 0)
-		return ret;
+		ret = v4l2_async_register_subdev(&priv->subdev[i]);
+		if (ret < 0)
+			return ret;
+	}
 
 	spin_lock_init(&priv->lock);
 
@@ -660,10 +791,11 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 
 static int rcar_csi2_remove(struct platform_device *pdev)
 {
-	struct v4l2_subdev *subdev = platform_get_drvdata(pdev);
-	struct rcar_csi2 *priv = container_of(subdev, struct rcar_csi2, subdev);
+	struct rcar_csi2 *priv = platform_get_drvdata(pdev);
+	int i;
 
-	v4l2_async_unregister_subdev(&priv->subdev);
+	for (i= 0; i < 4; i++)
+		v4l2_async_unregister_subdev(&priv->subdev[i]);
 	pm_runtime_disable(&pdev->dev);
 
 	return 0;

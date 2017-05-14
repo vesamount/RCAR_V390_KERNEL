@@ -76,3 +76,21 @@ config SOC_CAMERA_TW9910
 	depends on SOC_CAMERA && I2C
 	help
 	  This is a tw9910 video driver
+
+config SOC_CAMERA_MAX9286
+	tristate "max9286 GMSL support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a MAXIM max9286 GMSL driver
+
+config SOC_CAMERA_TI9X4
+	tristate "ti9x4 FPDLink3 support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an Texas Instruments ti9X4 FPDLink3 driver
+
+config SOC_CAMERA_OV106XX
+	tristate "ov106xx camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a runtime detected GMSL/FPDLink3 sensors driver
