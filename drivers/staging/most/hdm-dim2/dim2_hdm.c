@@ -870,6 +870,7 @@ static int dim2_probe(struct platform_device *pdev)
 	dev->most_iface.enqueue = enqueue;
 	dev->most_iface.poison_channel = poison_channel;
 	dev->most_iface.request_netinfo = request_netinfo;
+	dev->most_iface.dev = &pdev->dev;
 
 	if (np) {
 		const char *tmp;

@@ -1272,7 +1272,7 @@ static int arm_mbo_chain(struct most_c_obj *c, int dir,
 		mbo->context = c;
 		mbo->ifp = c->iface;
 		mbo->hdm_channel_id = c->channel_id;
-		mbo->virt_address = dma_alloc_coherent(NULL,
+		mbo->virt_address = dma_alloc_coherent(c->iface->dev,
 						       coherent_buf_size,
 						       &mbo->bus_address,
 						       GFP_KERNEL);

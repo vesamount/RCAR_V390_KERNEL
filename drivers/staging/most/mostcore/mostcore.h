@@ -252,6 +252,7 @@ struct most_interface {
 				void (*on_netinfo)(struct most_interface *iface,
 						   unsigned char link_stat,
 						   unsigned char *mac_addr));
+	struct device *dev;
 	void *priv;
 };
 
