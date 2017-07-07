@@ -14,6 +14,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
+#include <linux/of_platform.h>
 #include <linux/printk.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -21,6 +22,7 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/io.h>
+#include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
@@ -98,6 +100,7 @@ struct dim2_hdm {
 	struct most_interface most_iface;
 	char name[16 + sizeof "dim2-"];
 	void __iomem *io_base;
+	struct clk *clk;
 	int clk_speed;
 	struct task_struct *netinfo_task;
 	wait_queue_head_t netinfo_waitq;
@@ -160,6 +163,27 @@ void dimcb_on_error(u8 error_id, const char *error_message)
 	       error_message);
 }
 
+static int dim_parce_speed(const char *clock_speed)
+{
+	if (!strcmp(clock_speed, "256fs"))
+		return CLK_256FS;
+	else if (!strcmp(clock_speed, "512fs"))
+		return CLK_512FS;
+	else if (!strcmp(clock_speed, "1024fs"))
+		return CLK_1024FS;
+	else if (!strcmp(clock_speed, "2048fs"))
+		return CLK_2048FS;
+	else if (!strcmp(clock_speed, "3072fs"))
+		return CLK_3072FS;
+	else if (!strcmp(clock_speed, "4096fs"))
+		return CLK_4096FS;
+	else if (!strcmp(clock_speed, "6144fs"))
+		return CLK_6144FS;
+	else if (!strcmp(clock_speed, "8192fs"))
+		return CLK_8192FS;
+	return -1;
+}
+
 /**
  * startup_dim - initialize the dim2 interface
  * @pdev: platform device
@@ -173,32 +197,12 @@ static int startup_dim(struct platform_device *pdev)
 	struct dim2_platform_data *pdata = pdev->dev.platform_data;
 	u8 hal_ret;
 
-	dev->clk_speed = -1;
-
-	if (clock_speed) {
-		if (!strcmp(clock_speed, "256fs"))
-			dev->clk_speed = CLK_256FS;
-		else if (!strcmp(clock_speed, "512fs"))
-			dev->clk_speed = CLK_512FS;
-		else if (!strcmp(clock_speed, "1024fs"))
-			dev->clk_speed = CLK_1024FS;
-		else if (!strcmp(clock_speed, "2048fs"))
-			dev->clk_speed = CLK_2048FS;
-		else if (!strcmp(clock_speed, "3072fs"))
-			dev->clk_speed = CLK_3072FS;
-		else if (!strcmp(clock_speed, "4096fs"))
-			dev->clk_speed = CLK_4096FS;
-		else if (!strcmp(clock_speed, "6144fs"))
-			dev->clk_speed = CLK_6144FS;
-		else if (!strcmp(clock_speed, "8192fs"))
-			dev->clk_speed = CLK_8192FS;
-	}
+	if (clock_speed)
+		dev->clk_speed = dim_parce_speed(clock_speed);
 
 	if (dev->clk_speed == -1) {
 		pr_info("Bad or missing clock speed parameter, using default value: 3072fs\n");
 		dev->clk_speed = CLK_3072FS;
-	} else {
-		pr_info("Selected clock speed: %s\n", clock_speed);
 	}
 	if (pdata && pdata->init) {
 		int ret = pdata->init(pdata, dev->io_base, dev->clk_speed);
@@ -746,6 +750,7 @@ static int dim2_probe(struct platform_device *pdev)
 	int ret, i;
 	struct kobject *kobj;
 	int irq;
+	struct device_node *np = pdev->dev.of_node;
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -784,6 +789,14 @@ static int dim2_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to request mlb_int irq %d\n", irq);
 		return ret;
 	}
+
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(dev->clk)) {
+		dev_err(&pdev->dev, "cannot get clock\n");
+		ret = PTR_ERR(dev->clk);
+		return ret;
+	}
+	clk_prepare_enable(dev->clk);
 
 	init_waitqueue_head(&dev->netinfo_waitq);
 	dev->deliver_netinfo = 0;
@@ -832,6 +845,12 @@ static int dim2_probe(struct platform_device *pdev)
 	dev->most_iface.enqueue = enqueue;
 	dev->most_iface.poison_channel = poison_channel;
 	dev->most_iface.request_netinfo = request_netinfo;
+
+	if (np) {
+		const char *tmp;
+		if (!of_property_read_string(np, "clock-speed", &tmp))
+			dev->clk_speed = dim_parce_speed(tmp);
+	}
 
 	kobj = most_register_interface(&dev->most_iface);
 	if (IS_ERR(kobj)) {
@@ -885,6 +904,8 @@ static int dim2_remove(struct platform_device *pdev)
 	most_deregister_interface(&dev->most_iface);
 	kthread_stop(dev->netinfo_task);
 
+	clk_disable_unprepare(dev->clk);
+
 	/*
 	 * break link to local platform_device_id struct
 	 * to prevent crash by unload platform device module
@@ -901,12 +922,19 @@ static const struct platform_device_id dim2_id[] = {
 
 MODULE_DEVICE_TABLE(platform, dim2_id);
 
+static const struct of_device_id dim2_of_match[] = {
+        { .compatible = "rcar,medialb-dim2", },
+        {},
+};
+MODULE_DEVICE_TABLE(of, dim2_of_match);
+
 static struct platform_driver dim2_driver = {
 	.probe = dim2_probe,
 	.remove = dim2_remove,
 	.id_table = dim2_id,
 	.driver = {
 		.name = "hdm_dim2",
+		.of_match_table = dim2_of_match,
 	},
 };
 
