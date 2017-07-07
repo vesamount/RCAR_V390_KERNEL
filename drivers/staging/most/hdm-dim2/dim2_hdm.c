@@ -26,6 +26,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
+#include <linux/delay.h>
 
 #include <mostcore.h>
 #include "dim2_hal.h"
@@ -184,6 +185,26 @@ static int dim_parce_speed(const char *clock_speed)
 	return -1;
 }
 
+static int dim_rcar_init(struct dim2_hdm *dev)
+{
+        /* PLL */
+	__raw_writel(0x04, dev->io_base + 0x600);
+
+	/* 512FS Enable Register */
+	if (dev->clk_speed == CLK_512FS)
+		__raw_writel(0x01, dev->io_base + 0x604);
+	else
+		__raw_writel(0x00, dev->io_base + 0x604);
+
+	udelay(200);
+
+	/* BBCR  = 0b11 */
+	__raw_writel(0x03, dev->io_base + 0x500);
+	__raw_writel(0x0002FF02, dev->io_base + 0x508);
+
+	return 0;
+}
+
 /**
  * startup_dim - initialize the dim2 interface
  * @pdev: platform device
@@ -209,6 +230,10 @@ static int startup_dim(struct platform_device *pdev)
 
 		if (ret)
 			return ret;
+	}
+
+	if (1 /* renesas */) {
+		dim_rcar_init(dev);
 	}
 
 	pr_info("sync: num of frames per sub-buffer: %u\n", fcnt);
