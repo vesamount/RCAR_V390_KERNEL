@@ -1,0 +1,46 @@
+/*
+ * Device Tree Source for the H3/M3ULCB Kingfisher board:
+ *  this overrides WIFI in favour SD on SDHI3
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+&sdio_switch {
+	regulator-name = "sd_on";
+	enable-active-high;
+};
+
+&vccq_sdhi3 {
+	compatible = "regulator-gpio";
+
+	regulator-min-microvolt = <1800000>;
+
+	gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
+	gpios-states = <1>;
+	states = <3300000 1
+		  1800000 0>;
+};
+
+&sdhi3 {
+	/delete-property/non-removable;
+	/delete-property/cap-power-off-card;
+	/delete-property/keep-power-in-suspend;
+	/delete-property/enable-sdio-wakeup;
+	/delete-property/max-frequency;
+	/delete-property/no-1-8-v;
+
+	vmmc-supply = <&vcc_sdhi3>;
+	cd-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
+	wp-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
+//	sd-uhs-sdr50;
+//	sd-uhs-sdr104;
+};
+
+&wlcore {
+	status = "disabled";
+};

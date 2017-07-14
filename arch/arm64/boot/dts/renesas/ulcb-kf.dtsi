@@ -13,6 +13,267 @@
 	aliases {
 		serial1 = &hscif0;
 		serial2 = &scif1;
+		serial3 = &hscif1;
+	};
+
+	snd_clk: snd_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24576000>;
+		clock-output-names = "scki";
+	};
+
+	wlan_en: regulator@4 {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_exp_74 4 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	vcc_sdhi3: regulator@41 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "SDHI3 Vcc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio4 17 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	vccq_sdhi3: regulator@5 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "SDHI3 VccQ";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	codec_en_reg: regulator@6 {
+		compatible = "regulator-fixed";
+		regulator-name = "codec-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_exp_74 15 0>;
+
+		/* delay - CHECK */
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
+	amp_en_reg: regulator@7 {
+		compatible = "regulator-fixed";
+		regulator-name = "amp-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_exp_74 0 0>;
+
+		startup-delay-us = <0>;
+		enable-active-high;
+	};
+
+	sdio_switch: regulator@9 {
+		compatible = "regulator-fixed";
+		regulator-name = "wifi_on";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_exp_74 5 0>;
+		enable-active-low;
+		regulator-always-on;
+	};
+
+	radio_switch: regulator@11 {
+		compatible = "regulator-fixed";
+		regulator-name = "radio_on";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_exp_74 13 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
+	mpcie_3v3: regulator@12 {
+		compatible = "regulator-fixed";
+		regulator-name = "mPCIe 3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_exp_77 14 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	mpcie_1v8: regulator@13 {
+		compatible = "regulator-fixed";
+		regulator-name = "mPCIe 1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&gpio_exp_77 15 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <200000>;
+		enable-active-high;
+	};
+
+	kim {
+		compatible = "kim";
+		shutdown-gpios = <&gpio_exp_74 3 GPIO_ACTIVE_HIGH>;
+		/* serial1 */
+		dev_name = "/dev/ttySC1";
+		flow_cntrl = <1>;
+		/* int div 8 hscif@26.6666656MHz */
+		baud_rate = <3333332>;
+	};
+
+	btwilink {
+		compatible = "btwilink";
+	};
+
+	sound_ext: sound@0 {
+		pinctrl-0 = <&sound_0_pins>;
+		pinctrl-names = "default";
+		compatible = "simple-audio-card";
+
+		simple-audio-card,format = "left_j";
+		simple-audio-card,name = "pcm3168a";
+
+		simple-audio-card,bitclock-master = <&sound_ext_master>;
+		simple-audio-card,frame-master = <&sound_ext_master>;
+		sound_ext_master: simple-audio-card,cpu@0 {
+			sound-dai = <&rcar_sound 0>;
+			dai-tdm-slot-num = <8>;
+			dai-tdm-slot-width = <32>;
+		};
+
+		simple-audio-card,codec@0 {
+			sound-dai = <&pcm3168a>;
+			dai-tdm-slot-num = <8>;
+			dai-tdm-slot-width = <32>;
+			system-clock-frequency = <24576000>;
+		};
+	};
+
+	/delete-node/sound;
+
+	rsnd_ak4613: sound@1 {
+		pinctrl-0 = <&sound_pins>;
+		pinctrl-names = "default";
+		compatible = "simple-audio-card";
+
+		simple-audio-card,format = "left_j";
+		simple-audio-card,name = "ak4613";
+
+		simple-audio-card,bitclock-master = <&sndcpu>;
+		simple-audio-card,frame-master = <&sndcpu>;
+
+		sndcpu: simple-audio-card,cpu@1 {
+			sound-dai = <&rcar_sound 1>;
+		};
+
+		sndcodec: simple-audio-card,codec@1 {
+			sound-dai = <&ak4613>;
+		};
+	};
+
+	sound_radio: sound@2 {
+		pinctrl-0 = <&sound_2_pins>;
+		pinctrl-names = "default";
+		compatible = "simple-audio-card";
+
+		simple-audio-card,format = "i2s";
+		simple-audio-card,name = "radio";
+
+		simple-audio-card,bitclock-master = <&sound_radio_master>;
+		simple-audio-card,frame-master = <&sound_radio_master>;
+		simple-audio-card,cpu@2 {
+			sound-dai = <&rcar_sound 2>;
+		};
+
+		sound_radio_master: simple-audio-card,codec@2 {
+			sound-dai = <&radio>;
+			system-clock-frequency = <12288000>;
+		};
+	};
+
+	sound_wl18xx: sound@3 {
+		pinctrl-0 = <&sound_3_pins>;
+		pinctrl-names = "default";
+		compatible = "simple-audio-card";
+
+		simple-audio-card,format = "i2s";
+		simple-audio-card,name = "wl18xx";
+
+		simple-audio-card,bitclock-master = <&sound_wl18xx_master>;
+		simple-audio-card,frame-master = <&sound_wl18xx_master>;
+		sound_wl18xx_master: simple-audio-card,cpu@3 {
+			sound-dai = <&rcar_sound 3>;
+		};
+
+		simple-audio-card,codec@3 {
+			sound-dai = <&wl18xx_pcm>;
+		};
+	};
+
+	lvds {
+		compatible = "panel-lvds";
+
+		width-mm = <210>;
+		height-mm = <158>;
+
+		data-mapping = "jeida-24";
+
+		panel-timing {
+			/* 1280x800 @60Hz */
+			clock-frequency = <65000000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <40>;
+			hfront-porch = <80>;
+			hback-porch = <40>;
+			vfront-porch = <14>;
+			vback-porch = <14>;
+			vsync-len = <4>;
+		};
+
+		port {
+			lvds_in: endpoint {
+				remote-endpoint = <&du_out_lvds0>;
+			};
+		};
+	};
+
+	hdmi-out {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con: endpoint {
+				remote-endpoint = <&adv7513_out>;
+			};
+		};
+	};
+
+	radio: si468x@0 {
+		compatible = "si,si468x-pcm";
+		status = "okay";
+
+		#sound-dai-cells = <0>;
+	};
+
+	wl18xx_pcm: wl18xx_pcm@0 {
+		compatible = "ti,wl18xx-pcm";
+		status = "okay";
+
+		#sound-dai-cells = <0>;
+	};
+
+	camera_clk: camera_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "mclk";
 	};
 };
 
@@ -28,8 +289,110 @@
 	status = "okay";
 };
 
+&canfd {
+	pinctrl-0 = <&canfd0_pins &canfd1_pins>;
+	pinctrl-names = "default";
+	status = "disabled";
+
+	channel0 {
+		status = "okay";
+	};
+
+	channel1 {
+		status = "okay";
+	};
+};
+
+&csi40 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "ycbcr422";
+			receive,vc = <0>;
+		};
+		csi2_vc1 {
+			data,type = "ycbcr422";
+			receive,vc = <1>;
+		};
+		csi2_vc2 {
+			data,type = "ycbcr422";
+			receive,vc = <2>;
+		};
+		csi2_vc3 {
+			data,type = "ycbcr422";
+			receive,vc = <3>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi40_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2 3 4>;
+			csi-rate = <300>;
+		};
+	};
+};
+
+&csi20 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "raw8";
+			receive,vc = <0>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi20_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+			csi-rate = <280>;
+		};
+	};
+};
+
+&du {
+	pinctrl-0 = <&du_pins>;
+	pinctrl-names = "default";
+};
+
 &ehci0 {
 	status = "okay";
+};
+
+&gpio2 {
+	bl_pwm {
+		gpio-hog;
+		gpios = <3 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "BL PWM 100%";
+	};
+};
+
+&gpio4 {
+	most_rst {
+		gpio-hog;
+		gpios = <14 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "MOST RST";
+	};
+};
+
+&gpio6 {
+	audio_sw {
+		gpio-hog;
+		gpios = <21 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "Onboard MCh Audio";
+	};
 };
 
 &hscif0 {
@@ -40,32 +403,53 @@
 	status = "okay";
 };
 
+&hscif1 {
+	pinctrl-0 = <&hscif1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
 &hsusb {
 	status = "okay";
 };
 
 &i2c2 {
+	clock-frequency = <100000>;
+
 	gpio_exp_74: gpio@74 {
 		compatible = "ti,tca9539";
 		reg = <0x74>;
 		gpio-controller;
 		#gpio-cells = <2>;
+/*
 		interrupt-controller;
 		interrupt-parent = <&gpio6>;
 		interrupts = <8 IRQ_TYPE_EDGE_FALLING>;
-
+*/
 		hub_pwen {
 			gpio-hog;
 			gpios = <6 GPIO_ACTIVE_HIGH>;
 			output-high;
 			line-name = "HUB pwen";
 		};
-
 		hub_rst {
 			gpio-hog;
 			gpios = <7 GPIO_ACTIVE_HIGH>;
 			output-high;
 			line-name = "HUB rst";
+		};
+		otg_offvbus {
+			gpio-hog;
+			gpios = <8 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "OTG off VBUSn";
+		};
+		otg_extlpn {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "OTG EXTLPn";
 		};
 	};
 
@@ -77,6 +461,19 @@
 		interrupt-controller;
 		interrupt-parent = <&gpio6>;
 		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+
+		gps_rst {
+			gpio-hog;
+			gpios = <6 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "GPS rst";
+		};
+		fpdl_shdn {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "FPDLink shdn";
+		};
 	};
 
 	i2cswitch2: i2c-switch@71 {
@@ -85,6 +482,133 @@
 		#size-cells = <0>;
 		reg = <0x71>;
 		reset-gpios = <&gpio5 3 GPIO_ACTIVE_LOW>;
+
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			/* BCM node(s) */
+		};
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* USB3.0 HUB node(s) */
+		};
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			/* Power amp node(s) */
+		};
+
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			/* Radio node(s) */
+		};
+
+		i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+
+			hdmi@3d {
+				compatible = "adi,adv7513";
+				reg = <0x3d>;
+//				interrupt-parent = <&gpio2>;
+//				interrupts = <0 IRQ_TYPE_EDGE_BOTH>;
+				pd-gpios = <&gpio_exp_75 5 GPIO_ACTIVE_LOW>;
+
+				interlace-allowed;
+				adi,input-depth = <8>;
+				adi,input-colorspace = "rgb";
+				adi,input-clock = "1x";
+				adi,input-style = <1>;
+				adi,input-justification = "evenly";
+				adi,clock-delay = <1200>;
+
+				limit-frequency = <100000000>;
+//				lower-refresh = <50>;
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						adv7513_in: endpoint {
+							remote-endpoint = <&du_out_rgb>;
+						};
+					};
+
+					port@1 {
+						reg = <1>;
+						adv7513_out: endpoint {
+							remote-endpoint = <&hdmi_con>;
+						};
+					};
+				};
+			};
+		};
+
+		i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+			/* PCIe node(s) */
+		};
+
+		i2c@6 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <6>;
+			/* LVDS display node(s) */
+
+			polytouch: edt-ft5x06@38 {
+				compatible = "edt,edt-ft5x06";
+				reg = <0x38>;
+				interrupt-parent = <&gpio5>;
+				interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
+			};
+		};
+
+		i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+			/* Audio, GPS and Gyro node(s) */
+
+			pcm3168a: audio-codec@44 {
+				#sound-dai-cells = <0>;
+				compatible = "ti,pcm3168a";
+				reg = <0x44>;
+				clocks = <&snd_clk>;
+				clock-names = "scki";
+				tdm;
+				VDD1-supply = <&codec_en_reg>;
+				VDD2-supply = <&codec_en_reg>;
+				VCCAD1-supply = <&codec_en_reg>;
+				VCCAD2-supply = <&codec_en_reg>;
+				VCCDA1-supply = <&amp_en_reg>;
+				VCCDA2-supply = <&amp_en_reg>;
+			};
+
+			lsm9ds0_acc_mag@1d {
+				compatible = "st,lsm9ds0_accel_magn";
+				reg = <0x1d>;
+			};
+
+			lsm9ds0_gyr@6b {
+				compatible = "st,lsm9ds0_gyro";
+				reg = <0x6b>;
+			};
+
+			/* GPS@ 0x42 */
+		};
 	};
 };
 
@@ -97,6 +621,76 @@
 		interrupt-controller;
 		interrupt-parent = <&gpio7>;
 		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+
+		port_b_a0 {
+			gpio-hog;
+			gpios = <0 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "Video-B A0";
+		};
+		port_b_a1 {
+			gpio-hog;
+			gpios = <1 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "Video-B A1";
+		};
+		port_a_a0 {
+			gpio-hog;
+			gpios = <2 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "Video-A A0";
+		};
+		port_a_a1 {
+			gpio-hog;
+			gpios = <3 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "Video-A A1";
+		};
+		cmos_pwdn {
+			gpio-hog;
+			gpios = <8 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "CMOS PWDN";
+		};
+		cmos_rst {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "CMOS RST";
+		};
+		/* pin 12 - CAM_CLK */
+		rpi_cam_io_1 {
+			gpio-hog;
+			gpios = <10 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "RaspB_IO1";
+		};
+		/* pin 11 - CAM_GPIO - assume pwdn */
+		rpi_cam_io_0 {
+			gpio-hog;
+			gpios = <11 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "RaspB_IO0";
+		};
+		sam_rst {
+			gpio-hog;
+			gpios = <4 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "SAM RST";
+		};
+		sam_pwr {
+			gpio-hog;
+			gpios = <5 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "SAM PWR";
+		};
+		/* 0 - FPDLink output, 1 - LVDS output */
+		lvds_vs_fpdl {
+			gpio-hog;
+			gpios = <14 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "LVDS switch";
+		};
 	};
 
 	gpio_exp_77: gpio@77 {
@@ -107,6 +701,31 @@
 		interrupt-controller;
 		interrupt-parent = <&gpio5>;
 		interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
+
+		mpcie_wake {
+			gpio-hog;
+			gpios = <0 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "mPCIe WAKE#";
+		};
+		mpcie_wdisable {
+			gpio-hog;
+			gpios = <1 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "mPCIe W_DISABLE";
+		};
+		mpcie_clreq {
+			gpio-hog;
+			gpios = <2 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "mPCIe CLKREQ#";
+		};
+		mpcie_ovc {
+			gpio-hog;
+			gpios = <3 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "mPCIe OVC";
+		};
 	};
 
 	i2cswitch4: i2c-switch@71 {
@@ -115,7 +734,357 @@
 		#size-cells = <0>;
 		reg = <0x71>;
 		reset-gpios= <&gpio3 15 GPIO_ACTIVE_LOW>;
+
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			/* SAM node(s) */
+		};
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* Slot A (CN10) */
+
+			ov106xx@0 {
+				compatible = "ovti,ov106xx";
+				reg = <0x60>;
+
+				port@0 {
+					ov106xx_in0: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2 3 4>;
+						remote-endpoint = <&vin0ep0>;
+					};
+				};
+				port@1 {
+					ov106xx_max9286_des0ep0: endpoint@0 {
+						remote-endpoint = <&max9286_des0ep0>;
+					};
+					ov106xx_ti9x4_des0ep0: endpoint@1 {
+						remote-endpoint = <&ti9x4_des0ep0>;
+					};
+				};
+			};
+
+			ov106xx@1 {
+				compatible = "ovti,ov106xx";
+				reg = <0x61>;
+
+				port@0 {
+					ov106xx_in1: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2 3 4>;
+						remote-endpoint = <&vin1ep0>;
+					};
+				};
+				port@1 {
+					ov106xx_max9286_des0ep1: endpoint@0 {
+						remote-endpoint = <&max9286_des0ep1>;
+					};
+					ov106xx_ti9x4_des0ep1: endpoint@1 {
+						remote-endpoint = <&ti9x4_des0ep1>;
+					};
+				};
+			};
+
+			ov106xx@2 {
+				compatible = "ovti,ov106xx";
+				reg = <0x62>;
+
+				port@0 {
+					ov106xx_in2: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2 3 4>;
+						remote-endpoint = <&vin2ep0>;
+					};
+				};
+				port@1 {
+					ov106xx_max9286_des0ep2: endpoint@0 {
+						remote-endpoint = <&max9286_des0ep2>;
+					};
+					ov106xx_ti9x4_des0ep2: endpoint@1 {
+						remote-endpoint = <&ti9x4_des0ep2>;
+					};
+				};
+			};
+
+			ov106xx@3 {
+				compatible = "ovti,ov106xx";
+				reg = <0x63>;
+
+				port@0 {
+					ov106xx_in3: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2 3 4>;
+						remote-endpoint = <&vin3ep0>;
+					};
+				};
+				port@1 {
+					ov106xx_max9286_des0ep3: endpoint@0 {
+						remote-endpoint = <&max9286_des0ep3>;
+					};
+					ov106xx_ti9x4_des0ep3: endpoint@1 {
+						remote-endpoint = <&ti9x4_des0ep3>;
+					};
+				};
+			};
+
+			/* DS90UB9x4 @ 0x3a */
+			ti9x4@0 {
+				compatible = "ti,ti9x4";
+				reg = <0x3a>;
+				ti,links = <4>;
+				ti,lanes = <4>;
+				ti,forwarding-mode = "round-robin";
+				ti,cable-mode = "coax";
+
+				POC0-gpios = <&gpio_exp_a_5c 8 GPIO_ACTIVE_HIGH>;
+				POC1-gpios = <&gpio_exp_a_5c 9 GPIO_ACTIVE_HIGH>;
+				POC2-gpios = <&gpio_exp_a_5c 10 GPIO_ACTIVE_HIGH>;
+				POC3-gpios = <&gpio_exp_a_5c 11 GPIO_ACTIVE_HIGH>;
+
+				port@0 {
+					ti9x4_des0ep0: endpoint@0 {
+						ti9x3-addr = <0x0c>;
+						dvp-order = <0>;
+						remote-endpoint = <&ov106xx_in0>;
+					};
+					ti9x4_des0ep1: endpoint@1 {
+						ti9x3-addr = <0x0d>;
+						dvp-order = <0>;
+						remote-endpoint = <&ov106xx_in1>;
+					};
+					ti9x4_des0ep2: endpoint@2 {
+						ti9x3-addr = <0x0e>;
+						dvp-order = <0>;
+						remote-endpoint = <&ov106xx_in2>;
+					};
+					ti9x4_des0ep3: endpoint@3 {
+						ti9x3-addr = <0x0f>;
+						dvp-order = <0>;
+						remote-endpoint = <&ov106xx_in3>;
+					};
+				};
+				port@1 {
+					ti9x4_csi0ep0: endpoint {
+						csi-rate = <1450>;
+						remote-endpoint = <&csi40_ep>;
+					};
+				};
+			};
+
+			/* MAX9286 @ 0x2c */
+			max9286@0 {
+				compatible = "maxim,max9286";
+				reg = <0x2c>;
+				maxim,links = <4>;
+				maxim,lanes = <4>;
+				maxim,resetb-gpio = <1>;
+				maxim,fsync-mode = "automatic";
+				maxim,timeout = <100>;
+
+				POC0-gpios = <&gpio_exp_a_5c 9 GPIO_ACTIVE_HIGH>;
+				POC1-gpios = <&gpio_exp_a_5c 8 GPIO_ACTIVE_HIGH>;
+				POC2-gpios = <&gpio_exp_a_5c 11 GPIO_ACTIVE_HIGH>;
+				POC3-gpios = <&gpio_exp_a_5c 10 GPIO_ACTIVE_HIGH>;
+
+				port@0 {
+					max9286_des0ep0: endpoint@0 {
+						max9271-addr = <0x50>;
+						dvp-order = <1>;
+						remote-endpoint = <&ov106xx_in0>;
+					};
+					max9286_des0ep1: endpoint@1 {
+						max9271-addr = <0x51>;
+						dvp-order = <1>;
+						remote-endpoint = <&ov106xx_in1>;
+					};
+					max9286_des0ep2: endpoint@2 {
+						max9271-addr = <0x52>;
+						dvp-order = <1>;
+						remote-endpoint = <&ov106xx_in2>;
+					};
+					max9286_des0ep3: endpoint@3 {
+						max9271-addr = <0x53>;
+						dvp-order = <1>;
+						remote-endpoint = <&ov106xx_in3>;
+					};
+				};
+				port@1 {
+					max9286_csi0ep0: endpoint {
+						csi-rate = <700>;
+						remote-endpoint = <&csi40_ep>;
+					};
+				};
+			};
+		};
+
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			/* MOST node(s) */
+		};
+
+		i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+
+			rpi_camera: ov5647@36 {
+				compatible = "ovti,ov5647";
+				reg = <0x36>;
+
+				port@0 {
+					rpi_camera_in: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2>;
+						remote-endpoint = <&vin4ep0>;
+					};
+				};
+			};
+		};
+
+		i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+
+			cmos_camera: ov5642@3c {
+				compatible = "ovti,ov5642";
+				reg = <0x3c>;
+				clocks = <&camera_clk>;
+				clock-names = "mclk";
+
+				port@0 {
+					cmos_camera_in: endpoint {
+						remote-endpoint = <&vin5ep0>;
+					};
+				};
+			};
+		};
+
+		i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+			/* Slot A (CN10) */
+
+			/* PCA9535 is a redundant/deprecated card */
+			gpio_exp_a_26: gpio@26 {
+				compatible = "nxp,pca9535";
+				reg = <0x26>;
+				gpio-controller;
+				#gpio-cells = <2>;
+
+				video_a_des_cfg1 {
+					gpio-hog;
+					gpios = <5 GPIO_ACTIVE_HIGH>;
+					input;
+					line-name = "Video-A cfg1";
+				};
+				video_a_des_cfg0 {
+					gpio-hog;
+					gpios = <6 GPIO_ACTIVE_HIGH>;
+					input;
+					line-name = "Video-A cfg0";
+				};
+				video_a_pwr_shdn {
+					gpio-hog;
+					gpios = <3 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR_SHDN";
+				};
+				video_a_cam_pwr0 {
+					gpio-hog;
+					gpios = <12 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR0";
+				};
+				video_a_cam_pwr1 {
+					gpio-hog;
+					gpios = <13 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR1";
+				};
+				video_a_cam_pwr2 {
+					gpio-hog;
+					gpios = <14 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR2";
+				};
+				video_a_cam_pwr3 {
+					gpio-hog;
+					gpios = <15 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR3";
+				};
+				video_a_des_shdn {
+					gpio-hog;
+					gpios = <4 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A DES_SHDN";
+				};
+				video_a_des_led {
+					gpio-hog;
+					gpios = <7 GPIO_ACTIVE_HIGH>;
+					output-low;
+					line-name = "Video-A led";
+				};
+			};
+
+			gpio_exp_a_5c: gpio@5c {
+				compatible = "maxim,max7325";
+				reg = <0x5c>;
+				gpio-controller;
+				#gpio-cells = <2>;
+
+				video_a_des_cfg2 {
+					gpio-hog;
+					gpios = <4 GPIO_ACTIVE_HIGH>;
+					input;
+					line-name = "Video-A cfg2";
+				};
+				video_a_des_cfg1 {
+					gpio-hog;
+					gpios = <6 GPIO_ACTIVE_HIGH>;
+					input;
+					line-name = "Video-A cfg1";
+				};
+				video_a_des_cfg0 {
+					gpio-hog;
+					gpios = <7 GPIO_ACTIVE_HIGH>;
+					input;
+					line-name = "Video-A cfg0";
+				};
+				video_a_pwr_shdn {
+					gpio-hog;
+					gpios = <14 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A PWR_SHDN";
+				};
+				video_a_des_shdn {
+					gpio-hog;
+					gpios = <13 GPIO_ACTIVE_HIGH>;
+					output-high;
+					line-name = "Video-A DES_SHDN";
+				};
+				video_a_led {
+					gpio-hog;
+					gpios = <12 GPIO_ACTIVE_HIGH>;
+					output-low;
+					line-name = "Video-A LED";
+				};
+			};
+		};
 	};
+};
+
+&msiof1 {
+	status = "disabled";
 };
 
 &ohci0 {
@@ -124,6 +1093,7 @@
 
 &pcie_bus_clk {
 	clock-frequency = <100000000>;
+	status = "okay";
 };
 
 &pciec0 {
@@ -132,6 +1102,9 @@
 
 &pciec1 {
 	status = "okay";
+
+	pcie3v3-supply = <&mpcie_3v3>;
+	pcie1v8-supply = <&mpcie_1v8>;
 };
 
 &pfc {
@@ -145,25 +1118,324 @@
 		function = "can1";
 	};
 
+	canfd0_pins: canfd0 {
+		groups = "canfd0_data_a";
+		function = "canfd0";
+	};
+
+	canfd1_pins: canfd1 {
+		groups = "canfd1_data";
+		function = "canfd1";
+	};
+
+	du_pins: du {
+		groups = "du_rgb888", "du_sync", "du_clk_out_0", "du_disp";
+		function = "du";
+	};
+
 	hscif0_pins: hscif0 {
 		groups = "hscif0_data", "hscif0_ctrl";
 		function = "hscif0";
 	};
 
+	hscif1_pins: hscif1 {
+		groups = "hscif1_data_a", "hscif1_ctrl_a";
+		function = "hscif1";
+	};
+
 	scif1_pins: scif1 {
-		groups = "scif1_data_b", "scif1_ctrl";
+		groups = "scif1_data_b";
 		function = "scif1";
+	};
+
+	sdhi3_pins_3v3: sd3_3v3 {
+		groups = "sdhi3_data4", "sdhi3_ctrl";
+		function = "sdhi3";
+		power-source = <3300>;
+	};
+
+	sdhi3_pins_1v8: sd3_1v8 {
+		groups = "sdhi3_data4", "sdhi3_ctrl";
+		function = "sdhi3";
+		power-source = <1800>;
+	};
+
+	sound_0_pins: sound0 {
+		groups = "ssi349_ctrl", "ssi3_data", "ssi4_data";
+		function = "ssi";
+	};
+
+	/* sound_pins defined in H3 or M3 ulsb file */
+
+	sound_2_pins: sound2 {
+		groups = "ssi6_ctrl", "ssi6_data";
+		function = "ssi";
+	};
+
+	sound_3_pins: sound3 {
+		groups = "ssi78_ctrl", "ssi7_data", "ssi8_data";
+		function = "ssi";
+	};
+
+	usb0_pins: usb0 {
+		groups = "usb0";
+		function = "usb0";
+	};
+
+	vin5_pins: vin5 {
+		groups = "vin5_data8", "vin5_sync", "vin5_clk";
+		function = "vin5";
+	};
+};
+
+&rcar_sound {
+	pinctrl-0 = <&sound_clk_pins>;
+	pinctrl-names = "default";
+
+	/* Multi DAI */
+	#sound-dai-cells = <1>;
+
+	rcar_sound,dai {
+		dai0 {
+			playback = <&ssi3>;
+			capture  = <&ssi4>;
+		};
+
+		dai1 {
+			playback = <&ssi0 &src0 &dvc0>;
+			capture  = <&ssi1 &src1 &dvc1>;
+		};
+
+		dai2 {
+			capture  = <&ssi6>;
+		};
+
+		dai3 {
+			playback = <&ssi7>;
+			capture  = <&ssi8>;
+		};
 	};
 };
 
 &scif1 {
 	pinctrl-0 = <&scif1_pins>;
 	pinctrl-names = "default";
-	uart-has-rtscts;
 
 	status = "okay";
+};
+
+&sdhi3 {
+	pinctrl-0 = <&sdhi3_pins_3v3>;
+	pinctrl-1 = <&sdhi3_pins_1v8>;
+	pinctrl-names = "default", "state_uhs";
+
+	vmmc-supply = <&wlan_en>;
+	vqmmc-supply = <&vccq_sdhi3>;
+	keep-power-in-suspend;
+	enable-sdio-wakeup;
+	bus-width = <4>;
+	no-1-8-v;
+	non-removable;
+	cap-power-off-card;
+	max-frequency = <26000000>;
+	status = "okay";
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+	wlcore: wlcore@2 {
+		compatible = "ti,wl1837";
+		reg = <2>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
+	};
+};
+
+&ssi4 {
+	shared-pin;
+};
+
+&ssi8 {
+	shared-pin;
+};
+
+&usb2_phy0 {
+	pinctrl-0 = <&usb0_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&vin0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin0ep0: endpoint {
+				csi,select = "csi40";
+				virtual,channel = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&ov106xx_in0>;
+			};
+		};
+		port@1 {
+			csi0ep0: endpoint {
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+		port@2 {
+			vin0_max9286_des0ep0: endpoint@0 {
+				remote-endpoint = <&max9286_des0ep0>;
+			};
+			vin0_ti9x4_des0ep0: endpoint@1 {
+				remote-endpoint = <&ti9x4_des0ep0>;
+			};
+		};
+	};
+};
+
+&vin1 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin1ep0: endpoint {
+				csi,select = "csi40";
+				virtual,channel = <1>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&ov106xx_in1>;
+			};
+		};
+		port@1 {
+			csi0ep1: endpoint {
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+		port@2 {
+			vin1_max9286_des0ep1: endpoint@0 {
+				remote-endpoint = <&max9286_des0ep1>;
+			};
+			vin1_ti9x4_des0ep1: endpoint@1 {
+				remote-endpoint = <&ti9x4_des0ep1>;
+			};
+		};
+	};
+};
+
+&vin2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin2ep0: endpoint {
+				csi,select = "csi40";
+				virtual,channel = <2>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&ov106xx_in2>;
+			};
+		};
+		port@1 {
+			csi0ep2: endpoint {
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+		port@2 {
+			vin2_max9286_des0ep2: endpoint@0 {
+				remote-endpoint = <&max9286_des0ep2>;
+			};
+			vin2_ti9x4_des0ep2: endpoint@1 {
+				remote-endpoint = <&ti9x4_des0ep2>;
+			};
+		};
+	};
+};
+
+&vin3 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin3ep0: endpoint {
+				csi,select = "csi40";
+				virtual,channel = <3>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&ov106xx_in3>;
+			};
+		};
+		port@1 {
+			csi0ep3: endpoint {
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+		port@2 {
+			vin3_max9286_des0ep3: endpoint@0 {
+				remote-endpoint = <&max9286_des0ep3>;
+			};
+			vin3_ti9x4_des0ep3: endpoint@1 {
+				remote-endpoint = <&ti9x4_des0ep3>;
+			};
+		};
+	};
+};
+
+&vin4 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin4ep0: endpoint {
+				csi,select = "csi20";
+				virtual,channel = <0>;
+				remote-endpoint = <&rpi_camera_in>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			csi2ep0: endpoint {
+				remote-endpoint = <&csi20_ep>;
+			};
+		};
+	};
+};
+
+&vin5 {
+	pinctrl-0 = <&vin5_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin5ep0: endpoint@0 {
+				bus-width = <8>;
+				/* #HSYNC, #VSYNC */
+				vsync-active = <1>;
+				hsync-active = <0>;
+				remote-endpoint = <&cmos_camera_in>;
+			};
+		};
+	};
 };
 
 &xhci0 {
 	status = "okay";
 };
+
+
+

@@ -1,0 +1,196 @@
+/*
+ * Device Tree Source for the H3ULCB.HAD board on r8a7795
+ *
+ * Copyright (C) 2016-2017 Renesas Electronics Corp.
+ * Copyright (C) 2016-2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+/*
+ * MSIOF0 - /dev/spidev1.0 connected to FPGA ethernet switch (both sides)
+ * MSIOF1 - /dev/spidev2.0 connected to RH850 (sideA to CSIH1, sideB to CSIH0)
+ */
+
+#include "r8a7795-h3ulcb-view.dts"
+
+/ {
+	model = "Renesas H3ULCB.HAD board based on r8a7795";
+
+	aliases {
+		serial0 = &scif1;
+		spi1 = &spi0_gpio;
+		spi2 = &spi1_gpio;
+	};
+
+	spi0_gpio: spi_gpio@0 {
+		compatible = "spi-gpio";
+		num-chipselects = <1>;
+		gpio-sck = <&gpio5 17 0>;
+		gpio-mosi = <&gpio5 20 0>;
+		gpio-miso = <&gpio5 22 0>;
+		cs-gpios = <&gpio5 19 0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		spidev@0 {
+			compatible = "spi-gpio";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+			spi-cpha;
+			spi-cpol;
+		};
+	};
+
+	spi1_gpio: spi_gpio@1 {
+		compatible = "spi-gpio";
+		num-chipselects = <1>;
+		gpio-sck = <&gpio6 8 0>;
+		gpio-mosi = <&gpio6 7 0>;
+		gpio-miso = <&gpio6 10 0>;
+		cs-gpios = <&gpio6 5 0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		spidev@0 {
+			compatible = "spi-gpio";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+			spi-cpha;
+			spi-cpol;
+		};
+	};
+
+	hdmi1-out {
+		compatible = "hdmi-connector";
+		label = "HDMI1 OUT";
+		type = "a";
+
+		port {
+			hdmi1_con: endpoint {
+			};
+		};
+	};
+};
+
+&hdmi1 {
+	status = "okay";
+
+	ports {
+		port@1 {
+			reg = <1>;
+			rcar_dw_hdmi1_out: endpoint {
+				remote-endpoint = <&hdmi1_con>;
+			};
+		};
+	};
+};
+
+&hdmi1_con {
+	remote-endpoint = <&rcar_dw_hdmi1_out>;
+};
+
+&pfc {
+	scif1_pins: scif1 {
+		groups = "scif1_data_a";
+		function = "scif1";
+	};
+
+	msiof0_pins: spi1 {
+		groups = "msiof0_clk", "msiof0_rxd",  "msiof0_txd",
+			 "msiof0_ss1";
+		function = "msiof0";
+	};
+
+	msiof1_pins: spi2 {
+		groups = "msiof1_clk_a", "msiof1_rxd_a", "msiof1_txd_a",
+			 "msiof1_ss1_a";
+		function = "msiof1";
+	};
+
+	sound_clk_pins: sound-clk {
+		groups = "audio_clk_a_a", "audio_clk_b_a", "audio_clk_c_a",
+			 "audio_clkout_a" /*, "audio_clkout3_a"*/;
+		function = "audio_clk";
+	};
+
+	usb31_pins: usb31 {
+		groups = "usb31";
+		function = "usb31";
+	};
+
+	can0_pins: can0 {
+		groups = "can0_data_a";
+		function = "can0";
+	};
+
+	canfd0_pins: canfd0 {
+		groups = "canfd0_data_a";
+		function = "canfd0";
+	};
+};
+
+&scif1 {
+	pinctrl-0 = <&scif1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&avb {
+	/delete-property/phy-handle;
+	/delete-property/phy-gpios;
+	/delete-node/ethernet-phy@0;
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&msiof0 {
+	pinctrl-0 = <&msiof0_pins>;
+	pinctrl-names = "default";
+	status = "disabled";
+	cs-gpios = <&gpio5 19 0>;
+
+	spidev@0 {
+		compatible = "renesas,sh-msiof";
+		reg = <0>;
+		spi-max-frequency = <66666666>;
+		spi-cpha;
+		spi-cpol;
+	};
+};
+
+&msiof1 {
+	status = "disabled";
+	cs-gpios = <&gpio6 5 0>;
+};
+
+&can0 {
+	pinctrl-0 = <&can0_pins>;
+	pinctrl-names = "default";
+	status = "disabled";
+
+	renesas,can-clock-select = <0x0>;
+	gpios = <&gpio2 6 GPIO_ACTIVE_HIGH /* enable - shared with camera board */
+		 &gpio2 7 GPIO_ACTIVE_LOW /* standby */
+		>;
+};
+
+&canfd {
+	pinctrl-0 = <&canfd0_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	renesas,can-clock-select = <0x0>;
+	gpios = <&gpio2 6 GPIO_ACTIVE_HIGH /* enable - shared with camera board */
+		 &gpio2 7 GPIO_ACTIVE_LOW /* standby */
+		>;
+
+	channel0 {
+		status = "okay";
+	};
+};

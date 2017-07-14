@@ -17,3 +17,21 @@
 	compatible = "shimafuji,kingfisher", "renesas,h3ulcb",
 		     "renesas,r8a7795";
 };
+
+&du {
+	ports {
+		port@0 {
+			endpoint {
+				remote-endpoint = <&adv7513_in>;
+			};
+		};
+		port@3 {
+			endpoint {
+				remote-endpoint = <&lvds_in>;
+			};
+		};
+	};
+};
+
+/* use CN11 instead default CN29/CN48 (H3 only) */
+//#include "ulcb-kf-cn11.dtsi"

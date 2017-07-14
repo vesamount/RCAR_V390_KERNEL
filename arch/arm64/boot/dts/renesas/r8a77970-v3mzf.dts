@@ -1,0 +1,442 @@
+/*
+ * Device Tree Source for the V3MZF board
+ *
+ * Copyright (C) 2018 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+/dts-v1/;
+#include "r8a77970.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "Renesas V3MZF board based on r8a7797";
+	compatible = "renesas,v3mzf", "renesas,r8a7797";
+
+	aliases {
+		serial0 = &scif0;
+		ethernet0 = &avb;
+	};
+
+	chosen {
+		bootargs = "ignore_loglevel rw root=/dev/nfs ip=dhcp";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@48000000 {
+		device_type = "memory";
+		/* first 128MB is reserved for secure area. */
+		reg = <0x0 0x48000000 0x0 0x38000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* device specific region for Lossy Decompression */
+		lossy_decompress: linux,lossy_decompress {
+			no-map;
+			reg = <0x00000000 0x6c000000 0x0 0x03000000>;
+		};
+
+		/* global autoconfigured region for contiguous allocations */
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			reg = <0x00000000 0x6f000000 0x0 0x11000000>;
+			linux,cma-default;
+		};
+	};
+
+	mmngr {
+		compatible = "renesas,mmngr";
+		memory-region = <&lossy_decompress>;
+	};
+
+	mmngrbuf {
+		compatible = "renesas,mmngrbuf";
+	};
+
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
+	lvds {
+		compatible = "panel-lvds";
+
+		width-mm = <210>;
+		height-mm = <158>;
+
+		data-mapping = "jeida-24";
+
+		panel-timing {
+			clock-frequency = <65000000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <40>;
+			hfront-porch = <80>;
+			hback-porch = <40>;
+			vfront-porch = <14>;
+			vback-porch = <14>;
+			vsync-len = <4>;
+		};
+
+		port {
+			lvds_in: endpoint {
+				remote-endpoint = <&du_out_lvds0>;
+			};
+		};
+	};
+
+	dclkin_p0: clock-out0 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <148500000>;
+	};
+
+	msiof_ref_clk: msiof-ref-clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <66666666>;
+	};
+
+	vcc_3v3: regulator0 {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed-VCC3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	vcc_vddq_vin0: regulator1 {
+		compatible = "regulator-fixed";
+		regulator-name = "VCC-VDDQ-VIN0";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+};
+
+&avb {
+	pinctrl-0 = <&avb_pins>;
+	pinctrl-names = "default";
+	renesas,no-ether-link;
+	phy-handle = <&phy0>;
+	status = "okay";
+	phy-int-gpio = <&gpio1 17 GPIO_ACTIVE_LOW>;
+
+	phy0: ethernet-phy@0 {
+		rxc-skew-ps = <1500>;
+		rxdv-skew-ps = <420>; /* default */
+		rxd0-skew-ps = <420>; /* default */
+		rxd1-skew-ps = <420>; /* default */
+		rxd2-skew-ps = <420>; /* default */
+		rxd3-skew-ps = <420>; /* default */
+		txc-skew-ps = <900>; /* default */
+		txen-skew-ps = <420>; /* default */
+		txd0-skew-ps = <420>; /* default */
+		txd1-skew-ps = <420>; /* default */
+		txd2-skew-ps = <420>; /* default */
+		txd3-skew-ps = <420>; /* default */
+		reg = <0>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+		max-speed = <1000>;
+	};
+};
+
+&canfd {
+	pinctrl-0 = <&canfd0_pins &canfd1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	channel0 {
+		status = "okay";
+	};
+
+	channel1 {
+		status = "okay";
+	};
+};
+
+&csi40 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "raw8";
+			receive,vc = <0>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi40_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2 3 4>;
+			csi-rate = <300>;
+		};
+	};
+};
+
+&du {
+	status = "okay";
+
+	ports {
+		port@0 {
+			endpoint {
+				remote-endpoint = <&lvds_in>;
+			};
+		};
+	};
+};
+
+&extal_clk {
+	clock-frequency = <16666666>;
+};
+
+&extalr_clk {
+	clock-frequency = <32768>;
+};
+
+&gpio1 {
+	pdb_ser_enable {
+		gpio-hog;
+		gpios = <26 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "PDB_SER_Enable";
+	};
+
+	lvds_sw_sel {
+		gpio-hog;
+		gpios = <27 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "LVDS_SW_SEL";
+	};
+};
+
+&gpio2 {
+	can0_inh_v3m {
+		gpio-hog;
+		gpios = <14 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "CAN0_INH_V3M";
+	};
+
+	can1_inh_v3m {
+		gpio-hog;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "CAN1_INH_V3M";
+	};
+};
+
+&gpio3 {
+	pdb_des_enable {
+		gpio-hog;
+		gpios = <0 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "PDB_DES_Enable";
+	};
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
+&i2c3 {
+	pinctrl-0 = <&i2c3_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+	clock-frequency = <400000>;
+
+	ov106xx@0 {
+		compatible = "ovti,ov106xx";
+		reg = <0x60>;
+
+		port@0 {
+			ov106xx_in0: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&vin0ep0>;
+			};
+		};
+		port@1 {
+			ov106xx_ti9x4_des0ep0: endpoint@0 {
+				remote-endpoint = <&ti9x4_des0ep0>;
+			};
+		};
+	};
+
+	ti9x4@30 {
+		compatible = "ti,ti9x4";
+		reg = <0x30>;
+		ti,links = <1>;
+		ti,lanes = <4>;
+		ti,forwarding-mode = "round-robin";
+		ti,dvp_bus = <0>;
+		ti,ser_id = <0x30>;
+
+		port@0 {
+			ti9x4_des0ep0: endpoint@0 {
+				ti9x3-addr = <0x0c>;
+				dvp-order = <0>;
+				remote-endpoint = <&ov106xx_in0>;
+			};
+		};
+		port@1 {
+			ti9x4_csi0ep0: endpoint {
+				csi-rate = <800>;
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+	};
+};
+
+&msiof2 {
+	pinctrl-0 = <&msiof2_pins>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio2 4 0>;
+
+	status = "okay";
+	spidev@0 {
+		compatible = "renesas,sh-msiof";
+		reg = <0>;
+		spi-max-frequency = <66666666>;
+	};
+};
+
+&msiof3 {
+	pinctrl-0 = <&msiof3_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+	slave;
+};
+
+&pfc {
+	pinctrl-0 = <&scif_clk_pins>;
+	pinctrl-names = "default";
+
+	avb_pins: avb {
+		groups = "avb0_mdc";
+		function = "avb0";
+	};
+
+	canfd0_pins: canfd0 {
+		groups = "canfd0_data_a";
+		function = "canfd0";
+	};
+
+	canfd1_pins: canfd1 {
+		groups = "canfd1_data";
+		function = "canfd1";
+	};
+
+	i2c0_pins: i2c0 {
+		groups = "i2c0";
+		function = "i2c0";
+	};
+
+	i2c3_pins: i2c3 {
+		groups = "i2c3";
+		function = "i2c3";
+	};
+
+	msiof2_pins: msiof2 {
+		groups = "msiof2_clk", "msiof2_txd", "msiof2_rxd";
+		function = "msiof2";
+	};
+
+	msiof3_pins: msiof3 {
+		groups = "msiof3_clk", "msiof3_txd", "msiof3_rxd", "msiof3_sync";
+		function = "msiof3";
+	};
+
+	scif0_pins: scif0 {
+		groups = "scif0_data";
+		function = "scif0";
+	};
+
+	scif_clk_pins: scif_clk {
+		groups = "scif_clk_b";
+		function = "scif_clk";
+	};
+
+	sdhi2_pins_3v3: sdhi2_3v3 {
+		groups = "mmc_data8", "mmc_ctrl";
+		function = "mmc";
+		power-source = <3300>;
+	};
+};
+
+&scif0 {
+	pinctrl-0 = <&scif0_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&scif_clk {
+	clock-frequency = <14745600>;
+	status = "okay";
+};
+
+&sdhi2 {
+	/* used for on-board eMMC */
+	pinctrl-0 = <&sdhi2_pins_3v3>;
+	pinctrl-names = "default";
+
+	vmmc-supply = <&vcc_3v3>;
+	vqmmc-supply = <&vcc_vddq_vin0>;
+	no-1-8-v;
+	cap-mmc-highspeed;
+	bus-width = <8>;
+	non-removable;
+	status = "okay";
+};
+
+&vin0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin0ep0: endpoint {
+				csi,select = "csi40";
+				virtual,channel = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&ov106xx_in0>;
+			};
+		};
+		port@1 {
+			csi0ep0: endpoint {
+				remote-endpoint = <&csi40_ep>;
+			};
+		};
+		port@2 {
+			vin0_ti9x4_des0ep0: endpoint@0 {
+				remote-endpoint = <&ti9x4_des0ep0>;
+			};
+		};
+	};
+};
+
+&wdt0 {
+	status = "okay";
+};

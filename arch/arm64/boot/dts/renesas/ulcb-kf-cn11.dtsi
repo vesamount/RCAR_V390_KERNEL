@@ -1,0 +1,462 @@
+/*
+ * Device Tree Source for the H3ULCB Kingfisher board:
+ *  this adding conflicting resource on VIN4/VIN5/VIN6/VIN7 for CN11
+ *  use CN11 instead default CN29/CN48
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+&i2cswitch4 {
+	i2c@2 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <2>;
+		/* Slot B (CN11) */
+
+		ov106xx@4 {
+			compatible = "ovti,ov106xx";
+			reg = <0x64>;
+
+			port@0 {
+				ov106xx_in4: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&vin4ep0>;
+				};
+			};
+			port@1 {
+				ov106xx_max9286_des1ep0: endpoint@0 {
+					remote-endpoint = <&max9286_des1ep0>;
+				};
+				ov106xx_ti9x4_des1ep0: endpoint@1 {
+					remote-endpoint = <&ti9x4_des1ep0>;
+				};
+			};
+		};
+
+		ov106xx@5 {
+			compatible = "ovti,ov106xx";
+			reg = <0x65>;
+
+			port@0 {
+				ov106xx_in5: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&vin5ep0>;
+				};
+			};
+			port@1 {
+				ov106xx_max9286_des1ep1: endpoint@0 {
+					remote-endpoint = <&max9286_des1ep1>;
+				};
+				ov106xx_ti9x4_des1ep1: endpoint@1 {
+					remote-endpoint = <&ti9x4_des1ep1>;
+				};
+			};
+		};
+
+		ov106xx@6 {
+			compatible = "ovti,ov106xx";
+			reg = <0x66>;
+				port@0 {
+				ov106xx_in6: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&vin6ep0>;
+				};
+			};
+			port@1 {
+				ov106xx_max9286_des1ep2: endpoint@0 {
+					remote-endpoint = <&max9286_des1ep2>;
+				};
+				ov106xx_ti9x4_des1ep2: endpoint@1 {
+					remote-endpoint = <&ti9x4_des1ep2>;
+				};
+			};
+		};
+
+		ov106xx@7 {
+			compatible = "ovti,ov106xx";
+			reg = <0x67>;
+				port@0 {
+				ov106xx_in7: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&vin7ep0>;
+				};
+			};
+			port@1 {
+				ov106xx_max9286_des1ep3: endpoint@0 {
+					remote-endpoint = <&max9286_des1ep3>;
+				};
+				ov106xx_ti9x4_des1ep3: endpoint@1 {
+					remote-endpoint = <&ti9x4_des1ep3>;
+				};
+			};
+		};
+
+		/* DS90UB9x4 @ 0x3a */
+		ti9x4@1 {
+			compatible = "ti,ti9x4";
+			reg = <0x3a>;
+			ti,sensor_delay = <350>;
+			ti,links = <4>;
+			ti,lanes = <4>;
+			ti,forwarding-mode = "round-robin";
+			ti,cable-mode = "coax";
+
+			POC0-gpios = <&gpio_exp_b_5c 8 GPIO_ACTIVE_HIGH>;
+			POC1-gpios = <&gpio_exp_b_5c 9 GPIO_ACTIVE_HIGH>;
+			POC2-gpios = <&gpio_exp_b_5c 10 GPIO_ACTIVE_HIGH>;
+			POC3-gpios = <&gpio_exp_b_5c 11 GPIO_ACTIVE_HIGH>;
+
+			port@0 {
+				ti9x4_des1ep0: endpoint@0 {
+					ti9x3-addr = <0x0c>;
+					dvp-order = <0>;
+					remote-endpoint = <&ov106xx_in4>;
+				};
+				ti9x4_des1ep1: endpoint@1 {
+					ti9x3-addr = <0x0d>;
+					dvp-order = <0>;
+					remote-endpoint = <&ov106xx_in5>;
+				};
+				ti9x4_des1ep2: endpoint@2 {
+					ti9x3-addr = <0x0e>;
+					dvp-order = <0>;
+					remote-endpoint = <&ov106xx_in6>;
+				};
+				ti9x4_des1ep3: endpoint@3 {
+					ti9x3-addr = <0x0f>;
+					dvp-order = <0>;
+					remote-endpoint = <&ov106xx_in7>;
+				};
+			};
+			port@1 {
+				ti9x4_csi2ep0: endpoint {
+					csi-rate = <1450>;
+					remote-endpoint = <&csi41_ep>;
+				};
+			};
+		};
+
+		/* MAX9286 @ 0x2c */
+		max9286@1 {
+			compatible = "maxim,max9286";
+			reg = <0x2c>;
+			maxim,sensor_delay = <350>;
+			maxim,links = <4>;
+			maxim,lanes = <4>;
+			maxim,resetb-gpio = <1>;
+			maxim,fsync-mode = "automatic";
+			maxim,timeout = <100>;
+
+			POC0-gpios = <&gpio_exp_b_5c 9 GPIO_ACTIVE_HIGH>;
+			POC1-gpios = <&gpio_exp_b_5c 8 GPIO_ACTIVE_HIGH>;
+			POC2-gpios = <&gpio_exp_b_5c 11 GPIO_ACTIVE_HIGH>;
+			POC3-gpios = <&gpio_exp_b_5c 10 GPIO_ACTIVE_HIGH>;
+
+			port@0 {
+				max9286_des1ep0: endpoint@0 {
+					max9271-addr = <0x50>;
+					dvp-order = <1>;
+					remote-endpoint = <&ov106xx_in4>;
+				};
+				max9286_des1ep1: endpoint@1 {
+					max9271-addr = <0x51>;
+					dvp-order = <1>;
+					remote-endpoint = <&ov106xx_in5>;
+				};
+				max9286_des1ep2: endpoint@2 {
+					max9271-addr = <0x52>;
+					dvp-order = <1>;
+					remote-endpoint = <&ov106xx_in6>;
+				};
+				max9286_des1ep3: endpoint@3 {
+					max9271-addr = <0x53>;
+					dvp-order = <1>;
+					remote-endpoint = <&ov106xx_in7>;
+				};
+			};
+			port@1 {
+				max9286_csi2ep0: endpoint {
+					csi-rate = <700>;
+					remote-endpoint = <&csi41_ep>;
+				};
+			};
+		};
+	};
+
+	i2c@6 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <6>;
+		/* Slot B (CN11) */
+
+		/* PCA9535 is a redundand/deprecated card */
+		gpio_exp_b_27: gpio@27 {
+			compatible = "nxp,pca9535";
+			reg = <0x27>;
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			video_b_des_cfg1 {
+				gpio-hog;
+				gpios = <5 GPIO_ACTIVE_HIGH>;
+				input;
+				line-name = "Video-B cfg1";
+			};
+			video_b_des_cfg0 {
+				gpio-hog;
+				gpios = <6 GPIO_ACTIVE_HIGH>;
+				input;
+				line-name = "Video-B cfg0";
+			};
+			video_b_pwr_shdn {
+				gpio-hog;
+				gpios = <3 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR_SHDN";
+			};
+			video_b_cam_pwr0 {
+				gpio-hog;
+				gpios = <12 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR0";
+			};
+			video_b_cam_pwr1 {
+				gpio-hog;
+				gpios = <13 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR1";
+			};
+			video_b_cam_pwr2 {
+				gpio-hog;
+				gpios = <14 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR2";
+			};
+			video_b_cam_pwr3 {
+				gpio-hog;
+				gpios = <15 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR3";
+			};
+			video_b_des_shdn {
+				gpio-hog;
+				gpios = <4 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B DES_SHDN";
+			};
+			video_b_des_led {
+				gpio-hog;
+				gpios = <7 GPIO_ACTIVE_HIGH>;
+				output-low;
+				line-name = "Video-B led";
+			};
+		};
+
+		gpio_exp_b_5c: gpio@5c {
+			compatible = "maxim,max7325";
+			reg = <0x5c>;
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			video_b_des_cfg2 {
+				gpio-hog;
+				gpios = <4 GPIO_ACTIVE_HIGH>;
+				input;
+				line-name = "Video-B cfg2";
+			};
+			video_b_des_cfg1 {
+				gpio-hog;
+				gpios = <6 GPIO_ACTIVE_HIGH>;
+				input;
+				line-name = "Video-B cfg1";
+			};
+			video_b_des_cfg0 {
+				gpio-hog;
+				gpios = <7 GPIO_ACTIVE_HIGH>;
+				input;
+				line-name = "Video-B cfg0";
+			};
+			video_b_pwr_shdn {
+				gpio-hog;
+				gpios = <14 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B PWR_SHDN";
+			};
+			video_b_des_shdn {
+				gpio-hog;
+				gpios = <13 GPIO_ACTIVE_HIGH>;
+				output-high;
+				line-name = "Video-B DES_SHDN";
+			};
+			video_b_led {
+				gpio-hog;
+				gpios = <12 GPIO_ACTIVE_HIGH>;
+				output-low;
+				line-name = "Video-B LED";
+			};
+		};
+	};
+};
+
+&vin4 {
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin4ep0: endpoint {
+				csi,select = "csi41";
+				virtual,channel = <0>;
+				remote-endpoint = <&ov106xx_in4>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			csi2ep0: endpoint {
+				remote-endpoint = <&csi41_ep>;
+			};
+		};
+		port@2 {
+			vin4_max9286_des1ep0: endpoint@0 {
+				remote-endpoint = <&max9286_des1ep0>;
+			};
+			vin4_ti9x4_des1ep0: endpoint@1 {
+				remote-endpoint = <&ti9x4_des1ep0>;
+			};
+		};
+	};
+};
+
+&vin5 {
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin5ep0: endpoint@0 {
+				csi,select = "csi41";
+				virtual,channel = <1>;
+				remote-endpoint = <&ov106xx_in5>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			csi2ep1: endpoint {
+				remote-endpoint = <&csi41_ep>;
+			};
+		};
+		port@2 {
+			vin5_max9286_des1ep1: endpoint@0 {
+				remote-endpoint = <&max9286_des1ep1>;
+			};
+			vin5_ti9x4_des1ep1: endpoint@1 {
+				remote-endpoint = <&ti9x4_des1ep1>;
+			};
+		};
+	};
+};
+
+&vin6 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin6ep0: endpoint@0 {
+				csi,select = "csi41";
+				virtual,channel = <2>;
+				remote-endpoint = <&ov106xx_in6>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			csi2ep2: endpoint {
+				remote-endpoint = <&csi41_ep>;
+			};
+		};
+		port@2 {
+			vin6_max9286_des1ep2: endpoint@0 {
+				remote-endpoint = <&max9286_des1ep2>;
+			};
+			vin6_ti9x4_des1ep2: endpoint@1 {
+				remote-endpoint = <&ti9x4_des1ep2>;
+			};
+		};
+	};
+};
+
+&vin7 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin7ep0: endpoint@0 {
+				csi,select = "csi41";
+				virtual,channel = <3>;
+				remote-endpoint = <&ov106xx_in7>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			csi2ep3: endpoint {
+				remote-endpoint = <&csi41_ep>;
+			};
+		};
+		port@2 {
+			vin7_max9286_des1ep3: endpoint@0 {
+				remote-endpoint = <&max9286_des1ep3>;
+			};
+			vin7_ti9x4_des1ep3: endpoint@1 {
+				remote-endpoint = <&ti9x4_des1ep3>;
+			};
+		};
+	};
+};
+
+&csi41 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "ycbcr422";
+			receive,vc = <0>;
+		};
+		csi2_vc1 {
+			data,type = "ycbcr422";
+			receive,vc = <1>;
+		};
+		csi2_vc2 {
+			data,type = "ycbcr422";
+			receive,vc = <2>;
+		};
+		csi2_vc3 {
+			data,type = "ycbcr422";
+			receive,vc = <3>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi41_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2 3 4>;
+			csi-rate = <300>;
+		};
+	};
+};
