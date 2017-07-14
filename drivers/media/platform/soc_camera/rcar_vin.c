@@ -154,6 +154,9 @@
 /* Video n Data Mode Register 2 bits */
 #define VNDMR2_VPS		(1 << 30)
 #define VNDMR2_HPS		(1 << 29)
+#define VNDMR2_CES		(1 << 28)
+#define VNDMR2_DES		(1 << 27)
+#define VNDMR2_CHS		(1 << 23)
 #define VNDMR2_FTEV		(1 << 17)
 #define VNDMR2_VLV(n)		((n & 0xf) << 12)
 
@@ -1889,10 +1892,15 @@ static int rcar_vin_set_bus_param(struct soc_camera_device *icd)
 		val = VNDMR2_FTEV;
 	else
 		val = VNDMR2_FTEV | VNDMR2_VLV(1);
+
 	if (!(common_flags & V4L2_MBUS_VSYNC_ACTIVE_LOW))
 		val |= VNDMR2_VPS;
 	if (!(common_flags & V4L2_MBUS_HSYNC_ACTIVE_LOW))
 		val |= VNDMR2_HPS;
+
+	val |= VNDMR2_CES;
+	dev_dbg(icd->parent, "VNDMR2=0x%x\n", val);
+
 	iowrite32(val, priv->base + VNDMR2_REG);
 
 	ret = rcar_vin_set_rect(icd);
@@ -2989,8 +2997,8 @@ static int rcar_vin_probe(struct platform_device *pdev)
 		priv->max_height = 2048;
 	}
 
-	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	if ((priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
+	    priv->chip == RCAR_V3M) && !of_property_read_string(np, "csi,select", &str)) {
 		u32 ifmd = 0;
 		bool match_flag = false;
 		const struct vin_gen3_ifmd *gen3_ifmd_table = NULL;
@@ -3024,12 +3032,6 @@ static int rcar_vin_probe(struct platform_device *pdev)
 			priv->index = RCAR_VIDEO_7;
 		else
 			priv->index = RCAR_VIN_CH_NONE;
-
-		ret = of_property_read_string(np, "csi,select", &str);
-		if (ret) {
-			dev_err(&pdev->dev, "could not parse csi,select\n");
-			return ret;
-		}
 
 		if (strcmp(str, "csi40") == 0)
 			priv->csi_ch = RCAR_CSI40;
