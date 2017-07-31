@@ -126,6 +126,7 @@ int soc_camera_client_s_selection(struct v4l2_subdev *sd,
 		dev_dbg(dev, "Camera S_SELECTION successful for %dx%d@%d:%d\n",
 			rect->width, rect->height, rect->left, rect->top);
 		*target_rect = *cam_rect;
+		*subrect = *rect;
 		return 0;
 	}
 
@@ -217,6 +218,7 @@ int soc_camera_client_s_selection(struct v4l2_subdev *sd,
 
 	if (!ret) {
 		*target_rect = *cam_rect;
+		*subrect = *rect;
 		move_and_crop_subrect(target_rect, subrect);
 	}
 
@@ -297,9 +299,7 @@ update_cache:
 	if (ret < 0)
 		return ret;
 
-	if (host_1to1)
-		*subrect = *rect;
-	else
+	if (!host_1to1)
 		move_and_crop_subrect(rect, subrect);
 
 	return 0;
