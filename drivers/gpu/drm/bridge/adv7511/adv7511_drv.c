@@ -530,18 +530,19 @@ static int adv7511_get_edid_block(void *data, u8 *buf, unsigned int block,
 		 * support 64 byte transfers than 256 byte transfers
 		 */
 
+#define CHUNK_SIZE	1
 		xfer[0].addr = adv7511->i2c_edid->addr;
 		xfer[0].flags = 0;
 		xfer[0].len = 1;
 		xfer[0].buf = &offset;
 		xfer[1].addr = adv7511->i2c_edid->addr;
 		xfer[1].flags = I2C_M_RD;
-		xfer[1].len = 64;
+		xfer[1].len = CHUNK_SIZE;
 		xfer[1].buf = adv7511->edid_buf;
 
 		offset = 0;
 
-		for (i = 0; i < 4; ++i) {
+		for (i = 0; i < 256/CHUNK_SIZE; ++i) {
 			ret = i2c_transfer(adv7511->i2c_edid->adapter, xfer,
 					   ARRAY_SIZE(xfer));
 			if (ret < 0)
@@ -549,8 +550,8 @@ static int adv7511_get_edid_block(void *data, u8 *buf, unsigned int block,
 			else if (ret != 2)
 				return -EIO;
 
-			xfer[1].buf += 64;
-			offset += 64;
+			xfer[1].buf += CHUNK_SIZE;
+			offset += CHUNK_SIZE;
 		}
 
 		adv7511->current_edid_segment = block / 2;
