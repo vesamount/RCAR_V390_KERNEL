@@ -19,6 +19,7 @@
 #include "dim2_reg.h"
 #include <linux/stddef.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 
 /*
  * Size factor for isochronous DBR buffer.
@@ -149,11 +150,16 @@ static void free_dbr(int offs, int size)
 
 static void dim2_transfer_madr(u32 val)
 {
+	int timeout = 1000;
 	dimcb_io_write(&g.dim2->MADR, val);
 
 	/* wait for transfer completion */
-	while ((dimcb_io_read(&g.dim2->MCTL) & 1) != 1)
+	while ((dimcb_io_read(&g.dim2->MCTL) & 1) != 1) {
+		if (--timeout == 0)
+			break;
+		udelay(1);
 		continue;
+	}
 
 	dimcb_io_write(&g.dim2->MCTL, 0);   /* clear transfer complete */
 }
