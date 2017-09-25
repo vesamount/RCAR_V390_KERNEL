@@ -532,11 +532,11 @@ static void dim2_cleanup(void)
 
 	/* clear status for all dma channels */
 	dimcb_io_write(&g.dim2->ACSR0, 0xFFFFFFFF);
-	dimcb_io_write(&g.dim2->ACSR1, 0xFFFFFFFF);
+//	dimcb_io_write(&g.dim2->ACSR1, 0xFFFFFFFF);
 
 	/* mask interrupts for all channels */
 	dimcb_io_write(&g.dim2->ACMR0, 0);
-	dimcb_io_write(&g.dim2->ACMR1, 0);
+//	dimcb_io_write(&g.dim2->ACMR1, 0);
 }
 
 static void dim2_initialize(bool enable_6pin, u8 mlb_clock)
@@ -552,7 +552,7 @@ static void dim2_initialize(bool enable_6pin, u8 mlb_clock)
 
 	/* activate all HBI channels */
 	dimcb_io_write(&g.dim2->HCMR0, 0xFFFFFFFF);
-	dimcb_io_write(&g.dim2->HCMR1, 0xFFFFFFFF);
+//	dimcb_io_write(&g.dim2->HCMR1, 0xFFFFFFFF);
 
 	/* enable HBI */
 	dimcb_io_write(&g.dim2->HCTL, bit_mask(HCTL_EN_BIT));
@@ -782,7 +782,7 @@ static u8 init_ctrl_async(struct dim_channel *ch, u8 type, u8 is_tx,
 void dim_service_mlb_int_irq(void)
 {
 	dimcb_io_write(&g.dim2->MS0, 0);
-	dimcb_io_write(&g.dim2->MS1, 0);
+//	dimcb_io_write(&g.dim2->MS1, 0);
 }
 
 u16 dim_norm_ctrl_async_buffer_size(u16 buf_size)

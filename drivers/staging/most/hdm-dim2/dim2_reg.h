@@ -20,28 +20,28 @@
 struct dim2_regs {
 	/* 0x00 */ u32 MLBC0;
 	/* 0x01 */ u32 rsvd0[1];
-	/* 0x02 */ u32 MLBPC0;
+	/* 0x02 */ u32 MLBPC0;	/* no at R-Car3 */
 	/* 0x03 */ u32 MS0;
 	/* 0x04 */ u32 rsvd1[1];
-	/* 0x05 */ u32 MS1;
+	/* 0x05 */ u32 MS1;	/* no at R-Car3 */
 	/* 0x06 */ u32 rsvd2[2];
 	/* 0x08 */ u32 MSS;
 	/* 0x09 */ u32 MSD;
 	/* 0x0A */ u32 rsvd3[1];
 	/* 0x0B */ u32 MIEN;
 	/* 0x0C */ u32 rsvd4[1];
-	/* 0x0D */ u32 MLBPC2;
-	/* 0x0E */ u32 MLBPC1;
+	/* 0x0D */ u32 MLBPC2;	/* no at R-Car3 */
+	/* 0x0E */ u32 MLBPC1;	/* no at R-Car3 */
 	/* 0x0F */ u32 MLBC1;
 	/* 0x10 */ u32 rsvd5[0x10];
 	/* 0x20 */ u32 HCTL;
 	/* 0x21 */ u32 rsvd6[1];
 	/* 0x22 */ u32 HCMR0;
-	/* 0x23 */ u32 HCMR1;
+	/* 0x23 */ u32 HCMR1;	/* no at R-Car3 */
 	/* 0x24 */ u32 HCER0;
-	/* 0x25 */ u32 HCER1;
+	/* 0x25 */ u32 HCER1;	/* no at R-Car3 */
 	/* 0x26 */ u32 HCBR0;
-	/* 0x27 */ u32 HCBR1;
+	/* 0x27 */ u32 HCBR1;	/* no at R-Car3 */
 	/* 0x28 */ u32 rsvd7[8];
 	/* 0x30 */ u32 MDAT0;
 	/* 0x31 */ u32 MDAT1;
@@ -57,9 +57,9 @@ struct dim2_regs {
 	/* 0xF0 */ u32 ACTL;
 	/* 0xF1 */ u32 rsvd9[3];
 	/* 0xF4 */ u32 ACSR0;
-	/* 0xF5 */ u32 ACSR1;
+	/* 0xF5 */ u32 ACSR1;	/* no at R-Car3 */
 	/* 0xF6 */ u32 ACMR0;
-	/* 0xF7 */ u32 ACMR1;
+	/* 0xF7 */ u32 ACMR1;	/* no at R-Car3 */
 };
 
 #define DIM2_MASK(n)  (~((~(u32)0) << (n)))
