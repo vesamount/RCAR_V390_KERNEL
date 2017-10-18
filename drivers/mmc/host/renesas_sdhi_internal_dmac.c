@@ -122,6 +122,7 @@ static const struct of_device_id renesas_sdhi_internal_dmac_of_match[] = {
 	{ .compatible = "renesas,sdhi-r8a77965", .data = &of_rcar_gen3_compatible, },
 	{ .compatible = "renesas,sdhi-r8a77990", .data = &of_rcar_gen3_compatible, },
 	{ .compatible = "renesas,sdhi-r8a77995", .data = &of_rcar_gen3_compatible, },
+	{ .compatible = "renesas,rcar-gen3-sdhi", .data = &of_rcar_gen3_compatible, },
 	{},
 };
 MODULE_DEVICE_TABLE(of, renesas_sdhi_internal_dmac_of_match);
