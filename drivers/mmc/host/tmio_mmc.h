@@ -120,6 +120,7 @@
 /* Check LSI revisions and set specific quirk value */
 #define DTRAEND1_SET_BIT17	BIT(0)
 #define HS400_USE_4TAP		BIT(1)
+#define USE_SEQUENCER		BIT(2)
 
 struct tmio_mmc_data;
 struct tmio_mmc_host;
@@ -145,6 +146,8 @@ struct tmio_mmc_dma_ops {
 	void (*abort)(struct tmio_mmc_host *host);
 	void (*dataend)(struct tmio_mmc_host *host);
 	bool (*dma_irq)(struct tmio_mmc_host *host);
+	void (*seq_start)(struct tmio_mmc_host *host);
+	void (*seq_irq)(struct tmio_mmc_host *host, int status);
 };
 
 struct tmio_mmc_host {
@@ -178,9 +181,14 @@ struct tmio_mmc_host {
 	struct completion	dma_dataend;
 	struct tasklet_struct	dma_complete;
 	struct tasklet_struct	dma_issue;
+	struct tasklet_struct	seq_complete;
+	bool			bounce_sg_mapped;
 	struct scatterlist	bounce_sg;
 	u8			*bounce_buf;
 	u32			dma_tranend1;
+
+	/* Sequencer support */
+	bool			seq_enabled;
 
 	/* Track lost interrupts */
 	struct delayed_work	delayed_reset_work;

@@ -194,6 +194,13 @@ static int tmio_mmc_next_sg(struct tmio_mmc_host *host)
 static void tmio_mmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct tmio_mmc_host *host = mmc_priv(mmc);
+	unsigned int timeout = 1000;
+	unsigned long flags = 0;
+
+	if (host->seq_enabled)
+		spin_lock_irqsave(&host->lock, flags);
+	else
+		__acquire(&host->lock);
 
 	if (enable && !host->sdio_irq_enabled) {
 		u16 sdio_status;
@@ -210,15 +217,52 @@ static void tmio_mmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 			sdio_status |= TMIO_SDIO_SETBITS_MASK;
 		sd_ctrl_write16(host, CTL_SDIO_STATUS, sdio_status);
 
-		sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK, host->sdio_irq_mask);
+		if (host->seq_enabled) {
+			while (timeout) {
+				sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK,
+						host->sdio_irq_mask);
+				if (sd_ctrl_read16(host, CTL_SDIO_IRQ_MASK) ==
+				    host->sdio_irq_mask)
+					break;
+
+				udelay(1);
+				timeout--;
+			}
+			if (!timeout)
+				dev_warn(&host->pdev->dev,
+					 "failed to write CTL_SDIO_IRQ_MASK\n");
+		} else {
+			sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK,
+					host->sdio_irq_mask);
+		}
 	} else if (!enable && host->sdio_irq_enabled) {
 		host->sdio_irq_mask = TMIO_SDIO_MASK_ALL;
-		sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK, host->sdio_irq_mask);
+		if (host->seq_enabled) {
+			while (timeout) {
+				sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK,
+						host->sdio_irq_mask);
+				if (sd_ctrl_read16(host, CTL_SDIO_IRQ_MASK) ==
+				    host->sdio_irq_mask)
+					break;
 
+				udelay(1);
+				timeout--;
+			}
+			if (!timeout)
+				dev_warn(&host->pdev->dev,
+					 "failed to write CTL_SDIO_IRQ_MASK\n");
+		} else {
+			sd_ctrl_write16(host, CTL_SDIO_IRQ_MASK,
+					host->sdio_irq_mask);
+		}
 		host->sdio_irq_enabled = false;
 		pm_runtime_mark_last_busy(mmc_dev(mmc));
 		pm_runtime_put_autosuspend(mmc_dev(mmc));
 	}
+	if (host->seq_enabled)
+		spin_unlock_irqrestore(&host->lock, flags);
+	else
+		__release(&host->lock);
 }
 
 static void tmio_mmc_clk_start(struct tmio_mmc_host *host)
@@ -792,6 +836,11 @@ static void __tmio_mmc_sdio_irq(struct tmio_mmc_host *host)
 	if (!(pdata->flags & TMIO_MMC_SDIO_IRQ))
 		return;
 
+	if (host->seq_enabled)
+		spin_lock(&host->lock);
+	else
+		__acquire(&host->lock);
+
 	status = sd_ctrl_read16(host, CTL_SDIO_STATUS);
 	ireg = status & TMIO_SDIO_MASK_ALL & ~host->sdio_irq_mask;
 
@@ -800,6 +849,11 @@ static void __tmio_mmc_sdio_irq(struct tmio_mmc_host *host)
 		sdio_status |= TMIO_SDIO_SETBITS_MASK;
 
 	sd_ctrl_write16(host, CTL_SDIO_STATUS, sdio_status);
+
+	if (host->seq_enabled)
+		spin_unlock(&host->lock);
+	else
+		__release(&host->lock);
 
 	if (mmc->caps & MMC_CAP_SDIO_IRQ && ireg & TMIO_SDIO_STAT_IOIRQ)
 		mmc_signal_sdio_irq(mmc);
@@ -819,6 +873,17 @@ irqreturn_t tmio_mmc_irq(int irq, void *devid)
 
 	if (__tmio_mmc_card_detect_irq(host, ireg, status))
 		return IRQ_HANDLED;
+	/* Sequencer Operation End */
+	if (host->seq_enabled) {
+		if (host->dma_ops)
+			if (host->dma_ops->dma_irq(host)) {
+				tmio_mmc_ack_mmc_irqs(host, TMIO_MASK_IRQ &
+						      ~(TMIO_STAT_CARD_REMOVE |
+							TMIO_STAT_CARD_INSERT));
+				host->dma_ops->seq_irq(host, status);
+				return IRQ_HANDLED;
+			}
+	}
 	if (__tmio_mmc_sdcard_irq(host, ireg, status))
 		return IRQ_HANDLED;
 	if (host->dma_ops)
@@ -830,6 +895,60 @@ irqreturn_t tmio_mmc_irq(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 EXPORT_SYMBOL_GPL(tmio_mmc_irq);
+
+static int tmio_mmc_start_seq(struct tmio_mmc_host *host,
+			      struct mmc_request *mrq)
+{
+	struct tmio_mmc_data *pdata = host->pdata;
+	struct mmc_data *data = mrq->data;
+
+	pr_debug("setup data transfer: blocksize %08x  nr_blocks %d\n",
+		 data->blksz, data->blocks);
+
+	if (!host->chan_rx || !host->chan_tx) {
+		host->force_pio = true;
+		return 0;
+	}
+
+	/* Some hardware cannot perform 2 byte requests in 4 bit mode */
+	if (host->mmc->ios.bus_width == MMC_BUS_WIDTH_4) {
+		int blksz_2bytes = pdata->flags & TMIO_MMC_BLKSZ_2BYTES;
+
+		if (data->blksz < 2 || (data->blksz < 4 && !blksz_2bytes)) {
+			pr_err("%s: %d byte block unsupported in 4 bit mode\n",
+			       mmc_hostname(host->mmc), data->blksz);
+			return -EINVAL;
+		}
+	}
+
+	tmio_mmc_init_sg(host, data);
+	host->cmd = mrq->cmd;
+	host->data = data;
+
+	sd_ctrl_write16(host, CTL_STOP_INTERNAL_ACTION, 0);
+
+	if (host->dma_ops)
+		host->dma_ops->seq_start(host);
+
+	if (host->force_pio) {
+		host->cmd = NULL;
+		host->data = NULL;
+	}
+
+	return 0;
+}
+
+static void tmio_mmc_set_blklen_and_blkcnt(struct tmio_mmc_host *host,
+					   struct mmc_data *data)
+{
+	host->force_pio = true;
+	tmio_mmc_init_sg(host, data);
+	host->data = data;
+
+	/* Set transfer length / blocksize */
+	sd_ctrl_write16(host, CTL_SD_XFER_LEN, data->blksz);
+	sd_ctrl_write16(host, CTL_XFER_BLK_COUNT, data->blocks);
+}
 
 static int tmio_mmc_start_data(struct tmio_mmc_host *host,
 			       struct mmc_data *data)
@@ -957,14 +1076,40 @@ static void tmio_process_mrq(struct tmio_mmc_host *host,
 	struct mmc_command *cmd;
 	int ret;
 
+	if (host->seq_enabled) {
+		if (mrq->data) {
+			/* Start SEQ */
+			ret = tmio_mmc_start_seq(host, mrq);
+			if (ret) {
+				goto fail;
+			} else if (!host->force_pio) {
+				/*
+				 * Succeeded to start SEQ
+				 * Wait SEQ interrupt
+				 */
+				schedule_delayed_work(
+					&host->delayed_reset_work,
+					msecs_to_jiffies(CMDREQ_TIMEOUT));
+				return;
+			}
+		}
+	}
 	if (mrq->sbc && host->cmd != mrq->sbc) {
 		cmd = mrq->sbc;
 	} else {
 		cmd = mrq->cmd;
 		if (mrq->data) {
-			ret = tmio_mmc_start_data(host, mrq->data);
-			if (ret)
-				goto fail;
+			if (host->seq_enabled) {
+				/*
+				 * Failed to start SEQ
+				 * Set blklen and blkcnt to transfer in PIO mode
+				 */
+				tmio_mmc_set_blklen_and_blkcnt(host, mrq->data);
+			} else {
+				ret = tmio_mmc_start_data(host, mrq->data);
+				if (ret)
+					goto fail;
+			}
 		}
 	}
 
