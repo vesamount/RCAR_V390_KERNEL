@@ -53,11 +53,13 @@
 
 static const struct soc_device_attribute sdhi_quirks_match[]  = {
 	{ .soc_id = "r8a7795", .revision = "ES1.*",
-	  .data = (void *)(DTRAEND1_SET_BIT17 | HS400_USE_4TAP), },
+	  .data = (void *)(DTRAEND1_SET_BIT17 | HS400_USE_4TAP |
+			   USE_SEQUENCER), },
 	{ .soc_id = "r8a7795", .revision = "ES2.0",
 	  .data = (void *)HS400_USE_4TAP, },
 	{ .soc_id = "r8a7796", .revision = "ES1.0",
-	  .data = (void *)(DTRAEND1_SET_BIT17 | HS400_USE_4TAP), },
+	  .data = (void *)(DTRAEND1_SET_BIT17 | HS400_USE_4TAP |
+			   USE_SEQUENCER), },
 	{ .soc_id = "r8a7796", .revision = "ES1.1",
 	  .data = (void *)HS400_USE_4TAP, },
 	{/*sentinel*/},
@@ -723,6 +725,9 @@ int renesas_sdhi_probe(struct platform_device *pdev,
 	host->hs400_use_4tap = (host->sdhi_quirks & HS400_USE_4TAP) ?
 				true : false;
 
+	host->seq_enabled = (host->sdhi_quirks & USE_SEQUENCER) ?
+			     true : false;
+
 	if (of_data) {
 		mmc_data->flags |= of_data->tmio_flags;
 		mmc_data->ocr_mask = of_data->tmio_ocr_mask;
@@ -735,7 +740,16 @@ int renesas_sdhi_probe(struct platform_device *pdev,
 		host->bus_shift = of_data->bus_shift;
 		priv->scc_offset = of_data->scc_offset;
 	}
-
+	if (host->seq_enabled) {
+		mmc_data->max_blk_count  = 0xffffffff / 512;
+#ifdef CONFIG_MMC_BLOCK_BOUNCE
+			/* (CMD23+CMD18)*1 + (dummy read command) */
+			mmc_data->max_segs = 1;
+#else
+			/* (CMD23+CMD18)*3 + (dummy read command) */
+			mmc_data->max_segs = 3;
+#endif
+	}
 	host->dma		= dma_priv;
 	host->write16_hook	= renesas_sdhi_write16_hook;
 	host->clk_enable	= renesas_sdhi_clk_enable;
