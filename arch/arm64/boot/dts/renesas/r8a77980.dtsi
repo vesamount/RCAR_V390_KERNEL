@@ -1252,6 +1252,7 @@
 			interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&cpg CPG_MOD 707>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
+			rse;
 		};
 
 		imrlx4_ch5: imr5@fe8b0000 {
@@ -1261,6 +1262,7 @@
 			interrupts = <GIC_SPI 255 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&cpg CPG_MOD 706>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
+			rse;
 		};
 
 		vip_disp_status {
