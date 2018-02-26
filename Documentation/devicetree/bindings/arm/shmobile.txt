@@ -124,7 +124,9 @@ Boards:
     compatible = "renesas,sk-rzg1e", "renesas,r8a7745"
   - SK-RZG1M (YR8A77430S000BE)
     compatible = "renesas,sk-rzg1m", "renesas,r8a7743"
-  - Wheat
+  - V3MSK (Y-ASK-RCAR-V3M-WS10)
+    compatible = "renesas,v3msk", "renesas,r8a77970"
+  - Wheat (RTP0RC7792ASKB0000JE)
     compatible = "renesas,wheat", "renesas,r8a7792"
 
 
