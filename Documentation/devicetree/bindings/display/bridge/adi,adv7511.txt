@@ -60,6 +60,7 @@ Optional properties:
 - interrupts: Specifier for the ADV7511 interrupt
 - pd-gpios: Specifier for the GPIO connected to the power down signal
 
+- interlace-allowed - Allows interlaced modes when set.
 - adi,clock-delay: Video data clock delay relative to the pixel clock, in ps
   (-1200 ps .. 1600 ps). Defaults to no delay.
 - adi,embedded-sync: The input uses synchronization signals embedded in the
