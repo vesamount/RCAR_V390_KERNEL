@@ -100,6 +100,7 @@
 		compatible = "simple-audio-card";
 
 		simple-audio-card,format = "left_j";
+		simple-audio-card,name = "ak4613";
 		simple-audio-card,bitclock-master = <&sndcpu>;
 		simple-audio-card,frame-master = <&sndcpu>;
 
