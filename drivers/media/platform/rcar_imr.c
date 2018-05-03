@@ -1999,7 +1999,7 @@ static int imr_probe(struct platform_device *pdev)
 	prop = of_get_property(np, "alloc-dev", NULL);
 	if (prop) {
 		node = of_find_node_by_phandle(be32_to_cpup(prop));
-		of_dma_configure(adev, node);
+		of_dma_configure(adev, node, true);
 	}
 
 	strlcpy(imr->video_dev.name, dev_name(&pdev->dev), sizeof(imr->video_dev.name));
