@@ -44,6 +44,15 @@ config VIDEO_RCAR_CSI2_LEGACY
 	---help---
 	  This is a v4l2 driver for the R-Car CSI-2 Interface
 
+config VIDEO_RCAR_ISP_LEGACY
+	tristate "R-Car Image Signal Processing (ISP) support"
+	depends on VIDEO_DEV && SOC_CAMERA
+	depends on ARCH_RENESAS || COMPILE_TEST
+	depends on HAS_DMA
+	select VIDEOBUF2_DMA_CONTIG
+	---help---
+	  This is a v4l2 driver for the R-Car ISP Interface
+
 config VIDEO_SH_MOBILE_CEU
 	tristate "SuperH Mobile CEU Interface driver"
 	depends on VIDEO_DEV && SOC_CAMERA && HAS_DMA && HAVE_CLK
