@@ -927,7 +927,18 @@ void arch_setup_dma_ops(struct device *dev, u64 dma_base, u64 size,
 		dev->dma_ops = &swiotlb_dma_ops;
 
 	dev->archdata.dma_coherent = coherent;
-	__iommu_setup_dma_ops(dev, dma_base, size, iommu);
+
+	if (!iommu) {
+		/*
+		 * we don't yet support buses that have a non-zero mapping.
+		 * Let's hope we won't need it
+		 */
+		WARN_ON(dma_base != 0);
+
+		/* save parent_dma_mask for swiotlb's dma_capable() */
+		dev->archdata.parent_dma_mask = size - 1;
+	} else
+		__iommu_setup_dma_ops(dev, dma_base, size, iommu);
 
 #ifdef CONFIG_XEN
 	if (xen_initial_domain()) {

@@ -66,10 +66,17 @@ static inline phys_addr_t dma_to_phys(struct device *dev, dma_addr_t dev_addr)
 
 static inline bool dma_capable(struct device *dev, dma_addr_t addr, size_t size)
 {
+	u64 mask;
+
 	if (!dev->dma_mask)
 		return false;
 
-	return addr + size - 1 <= *dev->dma_mask;
+	mask = *dev->dma_mask;
+	if (dev->archdata.parent_dma_mask &&
+			mask > dev->archdata.parent_dma_mask)
+		mask = dev->archdata.parent_dma_mask;
+
+	return addr + size - 1 <= mask;
 }
 
 static inline void dma_mark_clean(void *addr, size_t size)
