@@ -606,6 +606,17 @@ config RCAR_GYRO_ADC
 	  To compile this driver as a module, choose M here: the
 	  module will be called rcar-gyroadc.
 
+config RCAR_SADC
+	tristate "Renesas R-Car SADC driver"
+	depends on ARCH_R8A77970
+	depends on OF
+	depends on HAS_IOMEM
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	help
+	  Say yes here to build support for the SADC found in SoCs from
+	  Renesas (currently V3M has this ADC).
+
 config ROCKCHIP_SARADC
 	tristate "Rockchip SARADC driver"
 	depends on ARCH_ROCKCHIP || (ARM && COMPILE_TEST)
