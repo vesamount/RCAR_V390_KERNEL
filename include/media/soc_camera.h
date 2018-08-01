@@ -84,6 +84,7 @@ struct soc_camera_host {
 	struct soc_camera_host_ops *ops;
 	struct v4l2_async_subdev **asd;	/* Flat array, arranged in groups */
 	unsigned int *asd_sizes;	/* 0-terminated array of asd group sizes */
+	bool v4l2dev_preregistered;
 };
 
 struct soc_camera_host_ops {
@@ -271,6 +272,7 @@ static inline struct v4l2_subdev *soc_camera_to_subdev(
 }
 
 int soc_camera_host_register(struct soc_camera_host *ici);
+int soc_camera_host_preregister_v4l2_dev(struct soc_camera_host *ici);
 void soc_camera_host_unregister(struct soc_camera_host *ici);
 
 const struct soc_camera_format_xlate *soc_camera_xlate_by_fourcc(

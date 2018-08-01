@@ -1884,9 +1884,11 @@ int soc_camera_host_register(struct soc_camera_host *ici)
 		}
 	}
 
-	ret = v4l2_device_register(ici->v4l2_dev.dev, &ici->v4l2_dev);
-	if (ret < 0)
-		goto edevreg;
+	if (!ici->v4l2dev_preregistered) {
+		ret = v4l2_device_register(ici->v4l2_dev.dev, &ici->v4l2_dev);
+		if (ret < 0)
+			goto edevreg;
+	}
 
 	list_add_tail(&ici->list, &hosts);
 	mutex_unlock(&list_lock);
@@ -1914,6 +1916,18 @@ edevreg:
 	return ret;
 }
 EXPORT_SYMBOL(soc_camera_host_register);
+
+int soc_camera_host_preregister_v4l2_dev(struct soc_camera_host *ici)
+{
+	int ret;
+
+	ret = v4l2_device_register(ici->v4l2_dev.dev, &ici->v4l2_dev);
+	if (ret == 0)
+		ici->v4l2dev_preregistered = true;
+
+	return ret;
+}
+EXPORT_SYMBOL(soc_camera_host_preregister_v4l2_dev);
 
 /* Unregister all clients! */
 void soc_camera_host_unregister(struct soc_camera_host *ici)
