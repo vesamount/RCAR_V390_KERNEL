@@ -133,7 +133,7 @@ struct vsp1_dl_fragment_pool {
  * struct vsp1_dl_list - Display list
  * @list: entry in the display list manager lists
  * @dlm: the display list manager
- * @header: display list header, NULL for headerless lists
+ * @header: display list reader
  * @dma: DMA address for the header
  * @body0: first display list body
  * @fragments: list of extra display list bodies
@@ -153,15 +153,9 @@ struct vsp1_dl_list {
 	struct list_head chain;
 };
 
-enum vsp1_dl_mode {
-	VSP1_DL_MODE_HEADER,
-	VSP1_DL_MODE_HEADERLESS,
-};
-
 /**
  * struct vsp1_dl_manager - Display List manager
  * @index: index of the related WPF
- * @mode: display list operation mode (header or headerless)
  * @singleshot: execute the display list in single-shot mode
  * @vsp1: the VSP1 device
  * @lock: protects the free, active, queued, pending and gc_fragments lists
@@ -173,7 +167,6 @@ enum vsp1_dl_mode {
  */
 struct vsp1_dl_manager {
 	unsigned int index;
-	enum vsp1_dl_mode mode;
 	bool singleshot;
 	struct vsp1_device *vsp1;
 
@@ -416,6 +409,7 @@ static struct vsp1_dl_list *vsp1_dl_list_alloc(struct vsp1_dl_manager *dlm,
 					struct vsp1_dl_fragment_pool *pool)
 {
 	struct vsp1_dl_list *dl;
+	size_t header_offset;
 
 	dl = kzalloc(sizeof(*dl), GFP_KERNEL);
 	if (!dl)
@@ -428,16 +422,14 @@ static struct vsp1_dl_list *vsp1_dl_list_alloc(struct vsp1_dl_manager *dlm,
 	dl->body0 = vsp1_dl_fragment_get(pool);
 	if (!dl->body0)
 		return NULL;
-	if (dlm->mode == VSP1_DL_MODE_HEADER) {
-		size_t header_offset = dl->body0->max_entries
-				     * sizeof(*dl->body0->entries);
 
-		dl->header = ((void *)dl->body0->entries) + header_offset;
-		dl->dma = dl->body0->dma + header_offset;
+	header_offset = dl->body0->max_entries * sizeof(*dl->body0->entries);
 
-		memset(dl->header, 0, sizeof(*dl->header));
-		dl->header->lists[0].addr = dl->body0->dma;
-	}
+	dl->header = ((void *)dl->body0->entries) + header_offset;
+	dl->dma = dl->body0->dma + header_offset;
+
+	memset(dl->header, 0, sizeof(*dl->header));
+	dl->header->lists[0].addr = dl->body0->dma;
 
 	return dl;
 }
@@ -566,17 +558,10 @@ struct vsp1_dl_body *vsp1_dl_list_body(struct vsp1_dl_list *dl)
  *
  * The reference count of the body is incremented by this attachment, and thus
  * the caller should release it's reference if does not want to cache the body.
- *
- * Fragments are only usable for display lists in header mode. Attempt to
- * add a fragment to a header-less display list will return an error.
  */
 int vsp1_dl_list_add_fragment(struct vsp1_dl_list *dl,
 			      struct vsp1_dl_body *dlb)
 {
-	/* Multi-body lists are only available in header mode. */
-	if (dl->dlm->mode != VSP1_DL_MODE_HEADER)
-		return -EINVAL;
-
 	refcount_inc(&dlb->refcnt);
 
 	list_add_tail(&dlb->list, &dl->fragments);
@@ -596,17 +581,10 @@ int vsp1_dl_list_add_fragment(struct vsp1_dl_list *dl,
  * Adding a display list to a chain passes ownership of the display list to
  * the head display list item. The chain is released when the head dl item is
  * put back with __vsp1_dl_list_put().
- *
- * Chained display lists are only usable in header mode. Attempts to add a
- * display list to a chain in header-less mode will return an error.
  */
 int vsp1_dl_list_add_chain(struct vsp1_dl_list *head,
 			   struct vsp1_dl_list *dl)
 {
-	/* Chained lists are only available in header mode. */
-	if (head->dlm->mode != VSP1_DL_MODE_HEADER)
-		return -EINVAL;
-
 	head->has_chain = true;
 	list_add_tail(&dl->chain, &head->chain);
 	return 0;
@@ -709,17 +687,10 @@ static bool vsp1_dl_list_hw_update_pending(struct vsp1_dl_manager *dlm)
 		return false;
 
 	/*
-	 * Check whether the VSP1 has taken the update. In headerless mode the
-	 * hardware indicates this by clearing the UPD bit in the DL_BODY_SIZE
-	 * register, and in header mode by clearing the UPDHDR bit in the CMD
-	 * register.
+	 * Check whether the VSP1 has taken the update. The hardware indicates
+	 * this by clearing the UPDHDR bit in the CMD register.
 	 */
-	if (dlm->mode == VSP1_DL_MODE_HEADERLESS)
-		return !!(vsp1_read(vsp1, VI6_DL_BODY_SIZE)
-			  & VI6_DL_BODY_SIZE_UPD);
-	else
-		return !!(vsp1_read(vsp1, VI6_CMD(dlm->index))
-			  & VI6_CMD_UPDHDR);
+	return !!(vsp1_read(vsp1, VI6_CMD(dlm->index)) & VI6_CMD_UPDHDR);
 }
 
 static void vsp1_dl_list_hw_enqueue(struct vsp1_dl_list *dl)
@@ -727,34 +698,16 @@ static void vsp1_dl_list_hw_enqueue(struct vsp1_dl_list *dl)
 	struct vsp1_dl_manager *dlm = dl->dlm;
 	struct vsp1_device *vsp1 = dlm->vsp1;
 
-	if (dlm->mode == VSP1_DL_MODE_HEADERLESS) {
-		/*
-		 * In headerless mode, program the hardware directly with the
-		 * display list body address and size and set the UPD bit. The
-		 * bit will be cleared by the hardware when the display list
-		 * processing starts.
-		 */
-		vsp1_write(vsp1, VI6_DL_HDR_ADDR(0), dl->body0->dma);
-		vsp1_write(vsp1, VI6_DL_BODY_SIZE, VI6_DL_BODY_SIZE_UPD |
-			   (dl->body0->num_entries * sizeof(*dl->header->lists)));
-		if (vsp1->ths_quirks & VSP1_UNDERRUN_WORKAROUND) {
-			vsp1->dl_addr = dl->dma;
-			vsp1->dl_body = VI6_DL_BODY_SIZE_UPD |
-					(dl->body0->num_entries *
-					sizeof(*dl->header->lists));
-		}
-	} else {
-		/*
-		 * In header mode, program the display list header address. If
-		 * the hardware is idle (single-shot mode or first frame in
-		 * continuous mode) it will then be started independently. If
-		 * the hardware is operating, the VI6_DL_HDR_REF_ADDR register
-		 * will be updated with the display list address.
-		 */
-		vsp1_write(vsp1, VI6_DL_HDR_ADDR(dlm->index), dl->dma);
-		if (vsp1->ths_quirks & VSP1_UNDERRUN_WORKAROUND)
-			vsp1->dl_addr = dl->dma;
-	}
+	/*
+	 * Program the display list header address. If the hardware is idle
+	 * (single-shot mode or first frame in continuous mode) it will then be
+	 * started independently. If the hardware is operating, the
+	 * VI6_DL_HDR_REF_ADDR register will be updated with the display list
+	 * address.
+	 */
+	vsp1_write(vsp1, VI6_DL_HDR_ADDR(dlm->index), dl->dma);
+	if (vsp1->ths_quirks & VSP1_UNDERRUN_WORKAROUND)
+		vsp1->dl_addr = dl->dma;
 }
 
 static void vsp1_dl_list_commit_continuous(struct vsp1_dl_list *dl)
@@ -804,16 +757,13 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl, unsigned int pipe_index)
 	struct vsp1_dl_list *dl_child;
 	unsigned long flags;
 
-	if (dlm->mode == VSP1_DL_MODE_HEADER) {
-		/* Fill the header for the head and chained display lists. */
-		vsp1_dl_list_fill_header(dl, list_empty(&dl->chain),
-					 pipe_index);
+	/* Fill the header for the head and chained display lists. */
+	vsp1_dl_list_fill_header(dl, list_empty(&dl->chain), pipe_index);
 
-		list_for_each_entry(dl_child, &dl->chain, chain) {
-			bool last = list_is_last(&dl_child->chain, &dl->chain);
+	list_for_each_entry(dl_child, &dl->chain, chain) {
+		bool last = list_is_last(&dl_child->chain, &dl->chain);
 
-			vsp1_dl_list_fill_header(dl_child, last, pipe_index);
-		}
+		vsp1_dl_list_fill_header(dl_child, last, pipe_index);
 	}
 
 	spin_lock_irqsave(&dlm->lock, flags);
@@ -836,8 +786,8 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl, unsigned int pipe_index)
  *
  * Return true if the previous display list has completed at frame end, or false
  * if it has been delayed by one frame because the display list commit raced
- * with the frame end interrupt. The function always returns true in header mode
- * as display list processing is then not continuous and races never occur.
+ * with the frame end interrupt. The function always returns true in single-shot
+ * mode as display list processing is then not continuous and races never occur.
  */
 bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm, bool interlaced)
 {
@@ -911,13 +861,6 @@ void vsp1_dlm_setup(struct vsp1_device *vsp1, unsigned int pipe_index)
 			   (0x02 << VI6_DL_EXT_CTRL_POLINT_SHIFT) |
 			   VI6_DL_EXT_CTRL_DLPRI | VI6_DL_EXT_CTRL_EXT);
 	}
-	/*
-	 * The DRM pipeline operates with display lists in Continuous Frame
-	 * Mode, all other pipelines use manual start.
-	 */
-	if (vsp1->drm && vsp1->info->uapi)
-		ctrl |= VI6_DL_CTRL_CFM0 | VI6_DL_CTRL_NH0;
-
 	vsp1_write(vsp1, VI6_DL_CTRL, ctrl);
 	vsp1_write(vsp1, VI6_DL_SWAP(pipe_index), VI6_DL_SWAP_LWS |
 			 ((pipe_index == 1) ? VI6_DL_SWAP_IND : 0));
@@ -953,14 +896,6 @@ struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 		return NULL;
 
 	dlm->index = index;
-	dlm->mode = index == 0 && !vsp1->info->uapi
-		  ? VSP1_DL_MODE_HEADERLESS : VSP1_DL_MODE_HEADER;
-
-	if (((vsp1->version & VI6_IP_VERSION_MODEL_MASK) ==
-	    VI6_IP_VERSION_MODEL_VSPDL_GEN3) ||
-	    (vsp1->version & VI6_IP_VERSION_MODEL_MASK) ==
-	    VI6_IP_VERSION_MODEL_VSPD_GEN3)
-		dlm->mode = VSP1_DL_MODE_HEADER;
 
 	dlm->singleshot = vsp1->info->uapi;
 	dlm->vsp1 = vsp1;
@@ -970,13 +905,11 @@ struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 
 	/*
 	 * Initialize the display list body and allocate DMA memory for the body
-	 * and the optional header. Both are allocated together to avoid memory
+	 * and the header. Both are allocated together to avoid memory
 	 * fragmentation, with the header located right after the body in
 	 * memory.
 	 */
-	header_size = dlm->mode == VSP1_DL_MODE_HEADER
-		    ? ALIGN(sizeof(struct vsp1_dl_header), 8)
-		    : 0;
+	header_size = ALIGN(sizeof(struct vsp1_dl_header), 8);
 
 	if (!vsp1->info->uapi &&
 	    !(vsp1->ths_quirks & VSP1_AUTO_FLD_NOT_SUPPORT)) {
