@@ -355,8 +355,6 @@ static int ov2775_parse_dt(struct device_node *np, struct ov2775_priv *priv)
 		if (!endpoint)
 			break;
 
-		of_node_put(endpoint);
-
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
 			continue;
@@ -367,6 +365,8 @@ static int ov2775_parse_dt(struct device_node *np, struct ov2775_priv *priv)
 		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
 			break;
 	}
+
+	of_node_put(endpoint);
 
 	if (!priv->ti9x4_addr) {
 		dev_err(&client->dev, "deserializer does not present\n");

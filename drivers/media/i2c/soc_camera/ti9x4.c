@@ -406,10 +406,9 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 		if (!endpoint)
 			break;
 
-		of_node_put(endpoint);
-
 		if (i < priv->links) {
 			if (of_property_read_u32(endpoint, "ti9x3-addr", &priv->ti9x3_addr_map[i])) {
+				of_node_put(endpoint);
 				dev_err(&client->dev, "ti9x3-addr not set\n");
 				return -EINVAL;
 			}
@@ -431,6 +430,7 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 			of_update_property(rendpoint, dvp_order_prop);
 	}
 
+	of_node_put(endpoint);
 	return 0;
 }
 

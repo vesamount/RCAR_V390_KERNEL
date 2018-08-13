@@ -560,9 +560,8 @@ static int max9286_parse_dt(struct i2c_client *client)
 		if (!endpoint)
 			break;
 
-		of_node_put(endpoint);
-
 		if (of_property_read_u32(endpoint, "max9271-addr", &priv->max9271_addr_map[i])) {
+			of_node_put(endpoint);
 			dev_err(&client->dev, "max9271-addr not set\n");
 			return -EINVAL;
 		}
@@ -570,6 +569,7 @@ static int max9286_parse_dt(struct i2c_client *client)
 		priv->sd_fwnode[i] = of_fwnode_handle(endpoint);
 	}
 
+	of_node_put(endpoint);
 	return 0;
 }
 
@@ -585,8 +585,6 @@ static void max9286_setup_remote_endpoint(struct i2c_client *client)
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
 		if (!endpoint)
 			break;
-
-		of_node_put(endpoint);
 
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
@@ -604,6 +602,8 @@ static void max9286_setup_remote_endpoint(struct i2c_client *client)
 		if (dvp_order_prop)
 			of_update_property(rendpoint, dvp_order_prop);
 	}
+
+	of_node_put(endpoint);
 }
 
 static int max9286_probe(struct i2c_client *client,
