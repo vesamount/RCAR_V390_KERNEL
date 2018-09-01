@@ -27,6 +27,9 @@ enum rcar_gen3_clk_types {
 	CLK_TYPE_GEN3_ZG,
 	CLK_TYPE_GEN3_RINT,
 	CLK_TYPE_GEN3_OSC,
+
+	/* SoC specific definitions start here */
+	CLK_TYPE_GEN3_SOC_BASE,
 };
 
 #define DEF_GEN3_SD(_name, _id, _parent, _offset)	\
