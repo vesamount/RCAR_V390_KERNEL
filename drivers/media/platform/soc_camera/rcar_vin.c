@@ -2334,10 +2334,26 @@ static int rcar_vin_get_selection(struct soc_camera_device *icd,
 				  struct v4l2_selection *sel)
 {
 	struct rcar_vin_cam *cam = icd->host_priv;
+	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
+	struct v4l2_subdev_selection sdsel;
+	int ret;
 
-	sel->r = cam->subrect;
+	switch (sel->target) {
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+		sdsel.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+		sdsel.target = sel->target;
 
-	return 0;
+		ret = v4l2_subdev_call(sd, pad, get_selection, NULL, &sdsel);
+		if (!ret)
+			sel->r = sdsel.r;
+		return ret;
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+	case V4L2_SEL_TGT_CROP:
+		sel->r = cam->subrect;
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }
 
 /* Similar to set_crop multistage iterative algorithm */
