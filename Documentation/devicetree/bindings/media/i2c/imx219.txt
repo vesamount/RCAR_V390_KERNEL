@@ -1,0 +1,35 @@
+Sony IMX219 raw image sensor
+----------------------------
+
+IMX219 is a raw image sensor with MIPI CSI-2 image data interface
+and CCI (I2C compatible) control bus.
+
+Required properties:
+
+- compatible		: "sony,imx219".
+- reg			: I2C slave address of the sensor.
+
+The common video interfaces bindings (see video-interfaces.txt) should be
+used to specify link to the image data receiver. The IMX219 device node
+should contain one 'port' child node with an 'endpoint' subnode.
+
+Endpoint node mandatory properties:
+
+- remote-endpoint:  A phandle to the bus receiver's endpoint node.
+
+Example:
+
+		...
+			imx219_cam: imx219@10 {
+				compatible = "sony,imx219";
+				reg = <0x10>;
+
+				port@0 {
+					rpi_camera_in: endpoint {
+						clock-lanes = <0>;
+						data-lanes = <1 2>;
+						remote-endpoint = <&vin4ep0>;
+					};
+				};
+			};
+	};

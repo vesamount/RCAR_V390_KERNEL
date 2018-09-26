@@ -100,3 +100,9 @@ config SOC_CAMERA_OV106XX
 	depends on SOC_CAMERA && I2C
 	help
 	  This is a runtime detected GMSL/FPDLink3 sensors driver
+
+config SOC_CAMERA_IMX219
+	tristate "imx219 camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is Sony IMX219 driver
