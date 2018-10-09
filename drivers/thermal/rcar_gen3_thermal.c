@@ -503,6 +503,7 @@ static const struct of_device_id rcar_gen3_thermal_dt_ids[] = {
 	{ .compatible = "renesas,r8a7795-thermal", .data = &r8a7795_data},
 	{ .compatible = "renesas,r8a7796-thermal", .data = &r8a7796_data},
 	{ .compatible = "renesas,r8a77965-thermal", .data = &r8a7796_data},
+	{ .compatible = "renesas,r8a77980-thermal", .data = &r8a7796_data},
 	{ .compatible = "renesas,r8a77990-thermal", .data = &r8a77990_data},
 	{},
 };
