@@ -38,6 +38,10 @@ struct rcar_du_lvdsenc;
 
 #define RCAR_DU_QUIRK_ALIGN_128B	(1 << 0)	/* Align pitches to 128 bytes */
 #define RCAR_DU_QUIRK_LVDS_LANES	(1 << 1)	/* LVDS lanes 1 and 3 inverted */
+#define RCAR_LVDS_QUIRK_GEN2_PLLCR	(1 << 2)	/* LVDPLLCR has gen2 layout */
+#define RCAR_LVDS_QUIRK_GEN3_LVEN	(1 << 3)	/* LVEN bit needs to be set */
+							/* on R8A77970/R8A7799x */
+
 
 /*
  * struct rcar_du_output_routing - Output routing specification

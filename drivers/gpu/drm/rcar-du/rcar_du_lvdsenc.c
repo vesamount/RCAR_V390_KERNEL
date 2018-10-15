@@ -59,23 +59,39 @@ static u32 rcar_lvds_read(struct rcar_du_lvdsenc *lvds, u32 reg)
 	return ioread32(lvds->mmio + reg);
 }
 
+static u32 rcar_lvds_lvdpllcr_gen2(unsigned int freq)
+{
+	if (freq < 39000)
+		return LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_38M;
+	else if (freq < 61000)
+		return LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_60M;
+	else if (freq < 121000)
+		return LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_121M;
+	else
+		return LVDPLLCR_PLLDLYCNT_150M;
+}
+
+static u32 rcar_lvds_lvdpllcr_gen3(unsigned int freq)
+{
+	if (freq < 42000)
+		return LVDPLLCR_PLLDIVCNT_42M;
+	else if (freq < 85000)
+		return LVDPLLCR_PLLDIVCNT_85M;
+	else if (freq < 128000)
+		return LVDPLLCR_PLLDIVCNT_128M;
+	else
+		return LVDPLLCR_PLLDIVCNT_148M;
+}
+
 static void rcar_du_lvdsenc_start_gen2(struct rcar_du_lvdsenc *lvds,
 				       struct rcar_du_crtc *rcrtc)
 {
 	const struct drm_display_mode *mode = &rcrtc->crtc.mode;
-	unsigned int freq = mode->clock;
 	u32 lvdcr0;
 	u32 pllcr;
 
 	/* PLL clock configuration */
-	if (freq < 39000)
-		pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_38M;
-	else if (freq < 61000)
-		pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_60M;
-	else if (freq < 121000)
-		pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_121M;
-	else
-		pllcr = LVDPLLCR_PLLDLYCNT_150M;
+	pllcr = rcar_lvds_lvdpllcr_gen2(mode->clock);
 
 	rcar_lvds_write(lvds, LVDPLLCR, pllcr);
 
@@ -111,19 +127,14 @@ static void rcar_du_lvdsenc_start_gen3(struct rcar_du_lvdsenc *lvds,
 				       struct rcar_du_crtc *rcrtc)
 {
 	const struct drm_display_mode *mode = &rcrtc->crtc.mode;
-	unsigned int freq = mode->clock;
 	u32 lvdcr0;
 	u32 pllcr;
 
 	/* PLL clock configuration */
-	if (freq < 42000)
-		pllcr = LVDPLLCR_PLLDIVCNT_42M;
-	else if (freq < 85000)
-		pllcr = LVDPLLCR_PLLDIVCNT_85M;
-	else if (freq < 128000)
-		pllcr = LVDPLLCR_PLLDIVCNT_128M;
+	if (lvds->dev->info->quirks & RCAR_LVDS_QUIRK_GEN2_PLLCR)
+		pllcr = rcar_lvds_lvdpllcr_gen2(mode->clock);
 	else
-		pllcr = LVDPLLCR_PLLDIVCNT_148M;
+		pllcr = rcar_lvds_lvdpllcr_gen3(mode->clock);
 
 	rcar_lvds_write(lvds, LVDPLLCR, pllcr);
 
@@ -146,6 +157,12 @@ static void rcar_du_lvdsenc_start_gen3(struct rcar_du_lvdsenc *lvds,
 
 	lvdcr0 |= LVDCR0_PWD;
 	rcar_lvds_write(lvds, LVDCR0, lvdcr0);
+
+	if (lvds->dev->info->quirks & RCAR_LVDS_QUIRK_GEN3_LVEN) {
+		/* Turn on the LVDS PHY. */
+		lvdcr0 |= LVDCR0_LVEN;
+		rcar_lvds_write(lvds, LVDCR0, lvdcr0);
+	}
 
 	usleep_range(100, 150);
 
