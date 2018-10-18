@@ -439,7 +439,7 @@ static const struct vin_gen3_ifmd vin_m3n_vc_ifmd[] = {
 	},
 };
 
-static const struct vin_gen3_ifmd vin_v3_vc_ifmd[] = {
+static const struct vin_gen3_ifmd vin_v3m_vc_ifmd[] = {
 	{ 0x0000,
 		{
 			{RCAR_CSI40, RCAR_VIRTUAL_CH0},
@@ -2745,7 +2745,7 @@ static struct soc_camera_host_ops rcar_vin_host_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_vin_of_table[] = {
-	{ .compatible = "renesas,vin-r8a7797", .data = (void *)RCAR_V3M },
+	{ .compatible = "renesas,vin-r8a77970", .data = (void *)RCAR_V3M },
 	{ .compatible = "renesas,vin-r8a77965", .data = (void *)RCAR_M3N },
 	{ .compatible = "renesas,vin-r8a7796", .data = (void *)RCAR_M3 },
 	{ .compatible = "renesas,vin-r8a7795", .data = (void *)RCAR_H3 },
@@ -3163,7 +3163,7 @@ static int rcar_vin_probe(struct platform_device *pdev)
 			ifmd = VNCSI_IFMD_DES1;
 			break;
 		case RCAR_V3M:
-			gen3_ifmd_table = vin_v3_vc_ifmd;
+			gen3_ifmd_table = vin_v3m_vc_ifmd;
 			break;
 		default:
 			BUG();
@@ -3333,7 +3333,7 @@ static int rcar_vin_resume(struct device *dev)
 		ifmd = VNCSI_IFMD_DES1;
 		break;
 	case RCAR_V3M:
-		gen3_ifmd_table = vin_v3_vc_ifmd;
+		gen3_ifmd_table = vin_v3m_vc_ifmd;
 		break;
 	default:
 		return 0;
