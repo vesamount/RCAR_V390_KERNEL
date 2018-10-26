@@ -196,10 +196,6 @@
 
 &du {
 	status = "okay";
-};
-
-&lvds0 {
-	status = "okay";
 
 	ports {
 		port@1 {
