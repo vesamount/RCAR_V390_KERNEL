@@ -55,6 +55,15 @@
 		};
 	};
 
+	mmngr {
+		compatible = "renesas,mmngr";
+		memory-region = <&lossy_decompress>;
+	};
+
+	mmngrbuf {
+		compatible = "renesas,mmngrbuf";
+	};
+
 	hdmi-out {
 		compatible = "hdmi-connector";
 		type = "a";
