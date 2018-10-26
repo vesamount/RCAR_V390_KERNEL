@@ -166,6 +166,11 @@
 #define RCAR_CSI2_INTSTATE_ERRSYNCESC		(1 << 1)
 #define RCAR_CSI2_INTSTATE_ERRCONTROL		(1 << 0)
 
+static const struct soc_device_attribute r8a77980[] = {
+	{ .soc_id = "r8a77980" },
+	{ }
+};
+
 static const struct soc_device_attribute r8a77970[] = {
 	{ .soc_id = "r8a77970" },
 	{ }
@@ -413,7 +418,7 @@ static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 		iowrite32((hs_freq_range_v3m[bps_per_lane] << 16) |
 				RCAR_CSI2_PHTW_DWEN | RCAR_CSI2_PHTW_CWEN | 0x44,
 				priv->base + RCAR_CSI2_PHTW);
-	else if (soc_device_match(r8a7795))
+	else if (soc_device_match(r8a7795) || soc_device_match(r8a77980))
 		iowrite32(hs_freq_range_h3[bps_per_lane] << 16,
 				priv->base + RCAR_CSI2_PHYPLL);
 	else
@@ -500,7 +505,7 @@ static int rcar_csi2_hwinit(struct rcar_csi2 *priv)
 			return -EINVAL;
 		}
 
-		if (soc_device_match(r8a7795)) {
+		if (soc_device_match(r8a7795) || soc_device_match(r8a77980)) {
 			/* Set PHY Test Interface Write Register in R-Car H3(ES2.0) */
 			iowrite32(0x01cc01e2, priv->base + RCAR_CSI2_PHTW);
 			iowrite32(0x010101e3, priv->base + RCAR_CSI2_PHTW);
@@ -518,7 +523,7 @@ static int rcar_csi2_hwinit(struct rcar_csi2 *priv)
 		/* Set CSI0CLK Frequency Configuration Preset Register
 		 * in R-Car H3(ES2.0)
 		 */
-		if (soc_device_match(r8a7795))
+		if (soc_device_match(r8a7795) || soc_device_match(r8a77980))
 			iowrite32(CSI0CLKFREQRANGE(32), priv->base + RCAR_CSI2_CSI0CLKFCPR);
 
 		/* Enable lanes */
@@ -612,6 +617,7 @@ static struct v4l2_subdev_ops rcar_csi2_subdev_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_csi2_of_table[] = {
+	{ .compatible = "renesas,r8a77980-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a77970-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a77965-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7796-csi2", .data = (void *)RCAR_GEN3 },
@@ -622,6 +628,7 @@ MODULE_DEVICE_TABLE(of, rcar_csi2_of_table);
 #endif
 
 static struct platform_device_id rcar_csi2_id_table[] = {
+	{ "r8a77980-csi2",  RCAR_GEN3 },
 	{ "r8a77970-csi2",  RCAR_GEN3 },
 	{ "r8a77965-csi2",  RCAR_GEN3 },
 	{ "r8a7796-csi2",  RCAR_GEN3 },
