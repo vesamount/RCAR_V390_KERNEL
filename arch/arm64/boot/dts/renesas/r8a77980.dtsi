@@ -865,24 +865,8 @@
 			clocks = <&cpg CPG_MOD 811>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 811>;
+			renesas,id = <0>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin0csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin0>;
-					};
-				};
-			};
 		};
 
 		vin1: video@e6ef1000 {
@@ -892,24 +876,8 @@
 			clocks = <&cpg CPG_MOD 810>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			status = "disabled";
+			renesas,id = <1>;
 			resets = <&cpg 810>;
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin1csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin1>;
-					};
-				};
-			};
 		};
 
 		vin2: video@e6ef2000 {
@@ -919,24 +887,8 @@
 			clocks = <&cpg CPG_MOD 809>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 809>;
+			renesas,id = <2>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin2csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin2>;
-					};
-				};
-			};
 		};
 
 		vin3: video@e6ef3000 {
@@ -946,24 +898,8 @@
 			clocks = <&cpg CPG_MOD 808>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 808>;
+			renesas,id = <3>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin3csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin3>;
-					};
-				};
-			};
 		};
 
 		vin4: video@e6ef4000 {
@@ -973,24 +909,8 @@
 			clocks = <&cpg CPG_MOD 807>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 807>;
+			renesas,id = <4>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin4csi41: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi41vin4>;
-					};
-				};
-			};
 		};
 
 		vin5: video@e6ef5000 {
@@ -1000,24 +920,8 @@
 			clocks = <&cpg CPG_MOD 806>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 806>;
+			renesas,id = <5>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin5csi41: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi41vin5>;
-					};
-				};
-			};
 		};
 
 		vin6: video@e6ef6000 {
@@ -1027,24 +931,8 @@
 			clocks = <&cpg CPG_MOD 805>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 805>;
+			renesas,id = <6>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin6csi41: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi41vin6>;
-					};
-				};
-			};
 		};
 
 		vin7: video@e6ef7000 {
@@ -1054,24 +942,8 @@
 			clocks = <&cpg CPG_MOD 804>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 804>;
+			renesas,id = <7>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin7csi41: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi41vin7>;
-					};
-				};
-			};
 		};
 
 		vin8: video@e6ef8000 {
