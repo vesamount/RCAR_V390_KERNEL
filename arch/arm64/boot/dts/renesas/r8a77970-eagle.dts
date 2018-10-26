@@ -76,6 +76,12 @@
 			};
 		};
 	};
+
+	x1_clk: x1-clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <148500000>;
+	};
 };
 
 &avb {
@@ -102,6 +108,22 @@
 
 	channel0 {
 		status = "okay";
+	};
+};
+
+&du {
+	clocks = <&cpg CPG_MOD 724>,
+		 <&cpg CPG_MOD 727>,
+		 <&x1_clk>;
+	clock-names = "du.0", "lvds.0", "dclkin.0";
+	status = "okay";
+
+	ports {
+		port@1 {
+			lvds0_out: endpoint {
+				remote-endpoint = <&thc63lvd1024_in>;
+			};
+		};
 	};
 };
 
@@ -192,16 +214,4 @@
 	pinctrl-names = "default";
 
 	status = "okay";
-};
-
-&du {
-	status = "okay";
-
-	ports {
-		port@1 {
-			lvds0_out: endpoint {
-				remote-endpoint = <&thc63lvd1024_in>;
-			};
-		};
-	};
 };
