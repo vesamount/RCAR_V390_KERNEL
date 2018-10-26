@@ -39,7 +39,8 @@ config VIDEO_RCAR_VIN_LEGACY_DEBUG
 config VIDEO_RCAR_CSI2_LEGACY
 	tristate "R-Car MIPI CSI-2 Interface driver"
 	depends on VIDEO_DEV && SOC_CAMERA && HAVE_CLK
-	depends on ARCH_R8A7795 || ARCH_R8A7796 || ARCH_R8A77965 || COMPILE_TEST
+	depends on ARCH_R8A7795 || ARCH_R8A7796 || ARCH_R8A77965 || \
+		   ARCH_R8A77970 || COMPILE_TEST
 	select V4L2_FWNODE
 	---help---
 	  This is a v4l2 driver for the R-Car CSI-2 Interface

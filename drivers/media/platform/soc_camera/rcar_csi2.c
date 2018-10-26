@@ -166,8 +166,8 @@
 #define RCAR_CSI2_INTSTATE_ERRSYNCESC		(1 << 1)
 #define RCAR_CSI2_INTSTATE_ERRCONTROL		(1 << 0)
 
-static const struct soc_device_attribute r8a7797[] = {
-	{ .soc_id = "r8a7797" },
+static const struct soc_device_attribute r8a77970[] = {
+	{ .soc_id = "r8a77970" },
 	{ }
 };
 
@@ -409,7 +409,7 @@ static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 
 	dev_dbg(&priv->pdev->dev, "bps_per_lane (%d)\n", bps_per_lane);
 
-	if (soc_device_match(r8a7797))
+	if (soc_device_match(r8a77970))
 		iowrite32((hs_freq_range_v3m[bps_per_lane] << 16) |
 				RCAR_CSI2_PHTW_DWEN | RCAR_CSI2_PHTW_CWEN | 0x44,
 				priv->base + RCAR_CSI2_PHTW);
@@ -612,7 +612,7 @@ static struct v4l2_subdev_ops rcar_csi2_subdev_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_csi2_of_table[] = {
-	{ .compatible = "renesas,r8a7797-csi2", .data = (void *)RCAR_GEN3 },
+	{ .compatible = "renesas,r8a77970-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a77965-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7796-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7795-csi2", .data = (void *)RCAR_GEN3 },
@@ -622,7 +622,7 @@ MODULE_DEVICE_TABLE(of, rcar_csi2_of_table);
 #endif
 
 static struct platform_device_id rcar_csi2_id_table[] = {
-	{ "r8a7797-csi2",  RCAR_GEN3 },
+	{ "r8a77970-csi2",  RCAR_GEN3 },
 	{ "r8a77965-csi2",  RCAR_GEN3 },
 	{ "r8a7796-csi2",  RCAR_GEN3 },
 	{ "r8a7795-csi2",  RCAR_GEN3 },
