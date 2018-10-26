@@ -829,23 +829,6 @@
 			resets = <&cpg 811>;
 			renesas,id = <0>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin0csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin0>;
-					};
-				};
-			};
 		};
 
 		vin1: video@e6ef1000 {
@@ -857,23 +840,6 @@
 			resets = <&cpg 810>;
 			renesas,id = <1>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin1csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin1>;
-					};
-				};
-			};
 		};
 
 		vin2: video@e6ef2000 {
@@ -885,23 +851,6 @@
 			resets = <&cpg 809>;
 			renesas,id = <2>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin2csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin2>;
-					};
-				};
-			};
 		};
 
 		vin3: video@e6ef3000 {
@@ -913,23 +862,6 @@
 			resets = <&cpg 808>;
 			renesas,id = <3>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					vin3csi40: endpoint@2 {
-						reg = <2>;
-						remote-endpoint= <&csi40vin3>;
-					};
-				};
-			};
 		};
 
 		dmac1: dma-controller@e7300000 {
