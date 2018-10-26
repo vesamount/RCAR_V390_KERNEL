@@ -88,13 +88,6 @@
 	};
 };
 
-&du {
-	clocks = <&cpg CPG_MOD 724>,
-		 <&osc1_clk>;
-	clock-names = "du.0", "dclkin.0";
-	status = "okay";
-};
-
 &extal_clk {
 	clock-frequency = <16666666>;
 };
@@ -165,7 +158,11 @@
 	};
 };
 
-&lvds0 {
+&du {
+	clocks = <&cpg CPG_MOD 724>,
+		 <&cpg CPG_MOD 727>,
+		 <&osc1_clk>;
+	clock-names = "du.0", "lvds.0", "dclkin.0";
 	status = "okay";
 
 	ports {

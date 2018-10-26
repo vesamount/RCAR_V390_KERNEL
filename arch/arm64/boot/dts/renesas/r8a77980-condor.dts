@@ -126,9 +126,18 @@
 
 &du {
 	clocks = <&cpg CPG_MOD 724>,
+		 <&cpg CPG_MOD 727>,
 		 <&x1_clk>;
-	clock-names = "du.0", "dclkin.0";
+	clock-names = "du.0", "lvds.0", "dclkin.0";
 	status = "okay";
+
+	ports {
+		port@1 {
+			lvds0_out: endpoint {
+				remote-endpoint = <&thc63lvd1024_in>;
+			};
+		};
+	};
 };
 
 &extal_clk {
@@ -193,18 +202,6 @@
 				adv7511_out: endpoint {
 					remote-endpoint = <&hdmi_con>;
 				};
-			};
-		};
-	};
-};
-
-&lvds0 {
-	status = "okay";
-
-	ports {
-		port@1 {
-			lvds0_out: endpoint {
-				remote-endpoint = <&thc63lvd1024_in>;
 			};
 		};
 	};
