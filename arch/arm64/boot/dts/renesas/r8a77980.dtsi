@@ -1272,35 +1272,6 @@
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 716>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					csi40vin0: endpoint@0 {
-						reg = <0>;
-						remote-endpoint = <&vin0csi40>;
-					};
-					csi40vin1: endpoint@1 {
-						reg = <1>;
-						remote-endpoint = <&vin1csi40>;
-					};
-					csi40vin2: endpoint@2 {
-						reg = <2>;
-						remote-endpoint = <&vin2csi40>;
-					};
-					csi40vin3: endpoint@3 {
-						reg = <3>;
-						remote-endpoint = <&vin3csi40>;
-					};
-				};
-			};
 		};
 
 		csi41: csi2@feab0000 {
@@ -1311,35 +1282,6 @@
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 715>;
 			status = "disabled";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					reg = <1>;
-
-					csi41vin4: endpoint@0 {
-						reg = <0>;
-						remote-endpoint = <&vin4csi41>;
-					};
-					csi41vin5: endpoint@1 {
-						reg = <1>;
-						remote-endpoint = <&vin5csi41>;
-					};
-					csi41vin6: endpoint@2 {
-						reg = <2>;
-						remote-endpoint = <&vin6csi41>;
-					};
-					csi41vin7: endpoint@3 {
-						reg = <3>;
-						remote-endpoint = <&vin7csi41>;
-					};
-				};
-			};
 		};
 
 		du: display@feb00000 {
