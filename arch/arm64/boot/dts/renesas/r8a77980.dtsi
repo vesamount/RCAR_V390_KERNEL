@@ -1452,6 +1452,53 @@
 			power-domains = <&sysc R8A77980_PD_A3VIP2>;
 		};
 
+		fcpr_vip {
+			compatible = "generic-uio";
+			reg = <0 0xe7aa0000 0 0x20000>;
+		};
+
+		fcpr_ir {
+			compatible = "generic-uio";
+			reg = <0 0xff8d8000 0 0x10000>;
+		};
+
+		fcpr_vio0 {
+			compatible = "generic-uio";
+			reg = <0 0xfe9c0000 0 0x10000>;
+		};
+
+		fcpr_vio1 {
+			compatible = "generic-uio";
+			reg = <0 0xfea90000 0 0x10000>;
+		};
+
+		fcpr_rt {
+			compatible = "generic-uio";
+			reg = <0 0xffc70000 0 0x10000>;
+		};
+
+		fcpr_peri {
+			compatible = "generic-uio";
+			reg = <0 0xe7320000 0 0x10000>;
+		};
+
+		fcpra_peri {
+			compatible = "generic-uio";
+			reg = <0 0xe7410000 0 0x10000>;
+		};
+
+
+		fcpr_c53 {
+			compatible = "generic-uio";
+			reg = <0 0xf12a0000 0 0x10000>;
+		};
+
+		fcpra_c53 {
+			compatible = "generic-uio";
+			reg = <0 0xf12f0000 0 0x10000>;
+		};
+
+
 		isp0: isp@fec00000 {
 			compatible = "renesas,isp-r8a77980";
 			reg = <0 0xfec00000 0 0x20000>,
