@@ -66,6 +66,10 @@
 		compatible = "renesas,mmngrbuf";
 	};
 
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
 	osc5_clk: osc5-clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
