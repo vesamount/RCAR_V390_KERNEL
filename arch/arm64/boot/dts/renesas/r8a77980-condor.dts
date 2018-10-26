@@ -66,6 +66,10 @@
 		compatible = "renesas,mmngrbuf";
 	};
 
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
 	d3_3v: regulator-0 {
 		compatible = "regulator-fixed";
 		regulator-name = "D3.3V";
