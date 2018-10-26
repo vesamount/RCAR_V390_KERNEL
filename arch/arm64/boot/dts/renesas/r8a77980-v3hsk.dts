@@ -64,6 +64,10 @@
 		compatible = "renesas,mmngrbuf";
 	};
 
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
 	hdmi-out {
 		compatible = "hdmi-connector";
 		type = "a";
