@@ -57,6 +57,15 @@
 		};
 	};
 
+	mmngr {
+		compatible = "renesas,mmngr";
+		memory-region = <&lossy_decompress>;
+	};
+
+	mmngrbuf {
+		compatible = "renesas,mmngrbuf";
+	};
+
 	osc5_clk: osc5-clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
