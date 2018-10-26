@@ -57,6 +57,15 @@
 		};
 	};
 
+	mmngr {
+		compatible = "renesas,mmngr";
+		memory-region = <&lossy_decompress>;
+	};
+
+	mmngrbuf {
+		compatible = "renesas,mmngrbuf";
+	};
+
 	d3_3v: regulator-0 {
 		compatible = "regulator-fixed";
 		regulator-name = "D3.3V";
