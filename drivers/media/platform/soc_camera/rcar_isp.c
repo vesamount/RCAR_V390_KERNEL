@@ -728,7 +728,6 @@ static int rcar_isp_hw_ready(struct rcar_isp_priv *priv)
 /* Moves a buffer from the queue to the HW slot */
 static int rcar_isp_fill_hw_slot(struct rcar_isp_priv *priv)
 {
-	struct rcar_isp_cam *cam = priv->ici.icd->host_priv;
 	struct vb2_v4l2_buffer *vbuf;
 	dma_addr_t phys_addr_top;
 	int slot;
@@ -745,12 +744,16 @@ static int rcar_isp_fill_hw_slot(struct rcar_isp_priv *priv)
 	list_del_init(to_buf_list(vbuf));
 	priv->queue_buf[slot] = vbuf;
 	phys_addr_top = vb2_dma_contig_plane_dma_addr(&vbuf->vb2_buf, 0);
-#if 1
-	rcar_isp_setup_out_buffer(priv, slot, phys_addr_top);
-#else
-	rcar_isp_setup_out_buffer(priv, 0, phys_addr_top); // Y
-	rcar_isp_setup_out_buffer(priv, 1, phys_addr_top + cam->out_width * cam->out_height); // UV
-#endif
+
+	if (1) {
+		rcar_isp_setup_out_buffer(priv, slot, phys_addr_top);
+	} else {
+		struct rcar_isp_cam *cam = priv->ici.icd->host_priv;
+
+		rcar_isp_setup_out_buffer(priv, 0, phys_addr_top); // Y
+		rcar_isp_setup_out_buffer(priv, 1, phys_addr_top +
+					  cam->out_width * cam->out_height); // UV
+	}
 	return 1;
 }
 
