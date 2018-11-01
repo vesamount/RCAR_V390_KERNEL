@@ -29,6 +29,8 @@ dtb-$(CONFIG_ARCH_R8A7795) += r8a7795-h3ulcb-vb2.1.dtb r8a7795-h3ulcb-4x2g-vb2.1
 dtb-$(CONFIG_ARCH_R8A7795) += r8a7795-h3ulcb-vbm.dtb r8a7795-es1-h3ulcb-vbm.dtb
 dtb-$(CONFIG_ARCH_R8A77965) += r8a77965-m3nulcb-kf.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-eagle-function.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-eagle.dtb r8a77970-es1-eagle-function.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-v3msk.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
