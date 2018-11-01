@@ -255,6 +255,36 @@
 			};
 		};
 	};
+
+	pmic@5A {
+		compatible = "dlg,da9063";
+		reg = <0x5A>;
+		interrupt-parent = <&intc_ex>;
+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-controller;
+
+		rtc {
+			compatible = "dlg,da9063-rtc";
+		};
+
+		wdt {
+			compatible = "dlg,da9063-watchdog";
+		};
+
+		regulators {
+			DA9063_LDO11: bmem {
+				regulator-name = "bmem";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+
+		onkey {
+			compatible = "dlg,da9063-onkey";
+		};
+	};
 };
 
 &i2c3 {
