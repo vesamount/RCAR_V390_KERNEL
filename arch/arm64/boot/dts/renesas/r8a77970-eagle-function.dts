@@ -47,7 +47,7 @@
 	};
 };
 
-&sdhi2 {
+&mmc0 {
 	/* used for on-board eMMC */
 	pinctrl-0 = <&sdhi2_pins_3v3>;
 	pinctrl-1 = <&sdhi2_pins_1v8>;
