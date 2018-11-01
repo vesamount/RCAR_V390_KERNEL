@@ -31,6 +31,7 @@ dtb-$(CONFIG_ARCH_R8A77965) += r8a77965-m3nulcb-kf.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-eagle-function.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-eagle.dtb r8a77970-es1-eagle-function.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-v3msk.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-view.dtb r8a77970-es1-v3msk-view.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
