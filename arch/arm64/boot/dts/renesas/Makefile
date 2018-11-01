@@ -33,6 +33,8 @@ dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-eagle.dtb r8a77970-es1-eagle-functio
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-es1-v3msk.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-view.dtb r8a77970-es1-v3msk-view.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-kf.dtb r8a77970-es1-v3msk-kf.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-vbm.dtb r8a77970-es1-v3msk-vbm.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-vbm-v2.dtb r8a77970-es1-v3msk-vbm-v2.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
