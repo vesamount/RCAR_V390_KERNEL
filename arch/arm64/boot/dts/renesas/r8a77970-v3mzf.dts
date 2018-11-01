@@ -395,7 +395,7 @@
 	status = "okay";
 };
 
-&sdhi2 {
+&mmc0 {
 	/* used for on-board eMMC */
 	pinctrl-0 = <&sdhi2_pins_3v3>;
 	pinctrl-names = "default";
@@ -437,6 +437,6 @@
 	};
 };
 
-&wdt0 {
+&rwdt {
 	status = "okay";
 };

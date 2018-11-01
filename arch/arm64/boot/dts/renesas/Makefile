@@ -35,6 +35,7 @@ dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-view.dtb r8a77970-es1-v3msk-view.d
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-kf.dtb r8a77970-es1-v3msk-kf.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-vbm.dtb r8a77970-es1-v3msk-vbm.dtb
 dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3msk-vbm-v2.dtb r8a77970-es1-v3msk-vbm-v2.dtb
+dtb-$(CONFIG_ARCH_R8A77970) += r8a77970-v3mzf.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
