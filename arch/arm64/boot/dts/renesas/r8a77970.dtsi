@@ -864,6 +864,113 @@
 			status = "disabled";
 		};
 
+		imp_distributer: impdes0 {
+			compatible = "renesas,impx5+-distributer";
+			reg = <0 0xffa00000 0 0x10000>;
+			interrupts = <GIC_SPI 281 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 830>;
+			power-domains = <&sysc R8A77970_PD_A3IR>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+		};
+
+		imp0 {
+			compatible = "renesas,impx4-legacy";
+			reg = <0 0xff900000 0 0x20000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <0>;
+			clocks = <&cpg CPG_MOD 827>;
+			power-domains = <&sysc R8A77970_PD_A2IR0>;
+		};
+
+		imp1 {
+			compatible = "renesas,impx4-legacy";
+			reg = <0 0xff920000 0 0x20000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <1>;
+			clocks = <&cpg CPG_MOD 827>;
+			power-domains = <&sysc R8A77970_PD_A2IR0>;
+		};
+
+		imp2 {
+			compatible = "renesas,impx4-legacy";
+			reg = <0 0xff940000 0 0x20000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <2>;
+			clocks = <&cpg CPG_MOD 826>;
+			power-domains = <&sysc R8A77970_PD_A2IR1>;
+		};
+
+		imp3 {
+			compatible = "renesas,impx4-legacy";
+			reg = <0 0xff960000 0 0x20000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <3>;
+			clocks = <&cpg CPG_MOD 826>;
+			power-domains = <&sysc R8A77970_PD_A2IR1>;
+		};
+
+		impsc0 {
+			compatible = "renesas,impx4-shader";
+			reg = <0 0xff980000 0 0x10000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <4>;
+			clocks = <&cpg CPG_MOD 829>;
+			power-domains = <&sysc R8A77970_PD_A2SC0>;
+		};
+
+		impsc1 {
+			compatible = "renesas,impx4-shader";
+			reg = <0 0xff990000 0 0x10000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <5>;
+			clocks = <&cpg CPG_MOD 828>;
+			power-domains = <&sysc R8A77970_PD_A2SC1>;
+		};
+
+		impdm0 {
+			compatible = "renesas,impx5-dmac";
+			reg = <0 0xffa10000 0 0x1000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <6>;
+			clocks = <&cpg CPG_MOD 825>;
+			power-domains = <&sysc R8A77970_PD_A2IR2>;
+		};
+
+		impdm1 {
+			compatible = "renesas,impx5-dmac";
+			reg = <0 0xffa11000 0 0x1000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <7>;
+			clocks = <&cpg CPG_MOD 825>;
+			power-domains = <&sysc R8A77970_PD_A2IR2>;
+		};
+
+		imppsc0 {
+			compatible = "renesas,impx5+-psc";
+			reg = <0 0xffa20000 0 0x4000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <8>;
+			clocks = <&cpg CPG_MOD 825>;
+			power-domains = <&sysc R8A77970_PD_A2IR2>;
+		};
+
+		impcnn0 {
+			compatible = "renesas,impx5+-cnn";
+			reg = <0 0xff9e0000 0 0x10000>;
+			interrupt-parent = <&imp_distributer>;
+			interrupts = <9>;
+			clocks = <&cpg CPG_MOD 824>;
+			power-domains = <&sysc R8A77970_PD_A2IR3>;
+		};
+
+		impc0 {
+			compatible = "renesas,impx4-memory";
+			reg = <0 0xed000000 0 0xe0000>;
+			clocks = <&cpg CPG_MOD 830>;
+			power-domains = <&sysc R8A77970_PD_A3IR>;
+		};
+
 		imr-lx4@fe860000 {
 			compatible = "renesas,r8a77970-imr-lx4",
 				     "renesas,imr-lx4";
