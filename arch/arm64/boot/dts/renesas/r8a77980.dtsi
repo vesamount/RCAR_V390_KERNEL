@@ -1263,6 +1263,166 @@
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 		};
 
+		vip_disp_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a00000 0 0x10000>;
+			interrupts = <GIC_SPI 238 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 101>;
+			power-domains = <&sysc R8A77980_PD_A3VIP>;
+		};
+
+		vip_disp_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a00000 0 0x10000>;
+			interrupts = <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 101>;
+			power-domains = <&sysc R8A77980_PD_A3VIP>;
+		};
+
+		vip_umf_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a10000 0 0x10000>;
+			interrupts = <GIC_SPI 242 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 102>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_umf_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a10000 0 0x10000>;
+			interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 102>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_ps_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a20000 0 0x10000>;
+			interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1102>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_ps_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a20000 0 0x10000>;
+			interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1102>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_est_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a30000 0 0x10000>;
+			interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1101>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_est_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a30000 0 0x10000>;
+			interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1101>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_post_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a40000 0 0x10000>;
+			interrupts = <GIC_SPI 173 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1100>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_smd_post_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a40000 0 0x10000>;
+			interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1100>;
+			power-domains = <&sysc R8A77980_PD_A3VIP1>;
+		};
+
+		vip_cle0_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a50000 0 0x10000>;
+			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1004>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle0_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a50000 0 0x10000>;
+			interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1004>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle1_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a60000 0 0x10000>;
+			interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1003>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle1_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a60000 0 0x10000>;
+			interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1003>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle2_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a70000 0 0x10000>;
+			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1002>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle2_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a70000 0 0x10000>;
+			interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1002>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle3_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a80000 0 0x10000>;
+			interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1001>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle3_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a80000 0 0x10000>;
+			interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1001>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle4_status {
+			compatible = "generic-uio";
+			reg = <0 0xe7a90000 0 0x10000>;
+			interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1000>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
+		vip_cle4_error {
+			compatible = "generic-uio";
+			reg = <0 0xe7a90000 0 0x10000>;
+			interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cpg CPG_MOD 1000>;
+			power-domains = <&sysc R8A77980_PD_A3VIP2>;
+		};
+
 		isp@fec00000 {
 			compatible = "renesas,isp-r8a77980";
 			reg = <0 0xfec00000 0 0x20000>,
