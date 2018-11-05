@@ -1205,6 +1205,10 @@
 			power-domains = <&sysc R8A77980_PD_A3IR>;
 		};
 
+		imr_v4l2_alloc: imr_alloc {
+			dma-coherent;
+		};
+
 		imrlx4_ch0: imr0@fe860000 {
 			compatible = "renesas,r8a77980-imr-lx4",
 				     "renesas,imr-lx4";
@@ -1213,6 +1217,7 @@
 			clocks = <&cpg CPG_MOD 823>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 823>;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		imrlx4_ch1: imr1@fe870000 {
@@ -1223,6 +1228,7 @@
 			clocks = <&cpg CPG_MOD 822>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 822>;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		imrlx4_ch2: imr2@fe880000 {
@@ -1233,6 +1239,7 @@
 			clocks = <&cpg CPG_MOD 821>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 821>;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		imrlx4_ch3: imr3@fe890000 {
@@ -1243,6 +1250,7 @@
 			clocks = <&cpg CPG_MOD 820>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			resets = <&cpg 820>;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		imrlx4_ch4: imr4@fe8a0000 {
@@ -1253,6 +1261,7 @@
 			clocks = <&cpg CPG_MOD 707>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			rse;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		imrlx4_ch5: imr5@fe8b0000 {
@@ -1263,6 +1272,7 @@
 			clocks = <&cpg CPG_MOD 706>;
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 			rse;
+			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
 		vip_disp_status {
