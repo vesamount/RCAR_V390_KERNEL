@@ -53,7 +53,7 @@
 		};
 
 		/* device specific region for contiguous allocations */
-		linux,multimedia {
+		mmp_reserved: linux,multimedia {
 			compatible = "shared-dma-pool";
 			reusable;
 			reg = <0x00000000 0x7f000000 0x0 0x01000000>;
@@ -62,7 +62,7 @@
 
 	mmngr {
 		compatible = "renesas,mmngr";
-		memory-region = <&lossy_decompress>;
+		memory-region = <&mmp_reserved>, <&lossy_decompress>;
 	};
 
 	mmngrbuf {
