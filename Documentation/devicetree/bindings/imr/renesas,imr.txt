@@ -1,0 +1,55 @@
+* Renesas Electronics IMR
+
+This file provides information on what the device node for the IMR
+interface contains.
+
+Required properties:
+- compatible: "renesas,r8a7795-imr-lx4" if the device is a part of R8A7795 SoC.
+	      "renesas,r8a7796-imr-lx4" if the device is a part of R8A7796 SoC.
+	      "renesas,r8a77970-imr-lx4" if the device is a part of R8A7797 SoC.
+
+	      When compatible with the generic version, nodes must list the
+	      SoC-specific version corresponding to the platform first
+	      followed by the generic version.
+
+- reg: offset and length of (1) the register block and (2) the stream buffer.
+- interrupts: A list of interrupt-specifiers, one for each entry in
+	      interrupt-names.
+	      If interrupt-names is not present, an interrupt specifier
+	      for a single muxed interrupt.
+- clocks: clock phandle and specifier pair.
+- power-domains: must contain a reference to the PM domain.
+
+Example:
+
+	imr0{
+		compatible = "renesas,r8a77970-imr-lx4";
+		reg = <0 0xfe860000 0 0x10000>;
+		interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 823>;
+		power-domains = <&sysc R8A7797_PD_A3VC>;
+	};
+
+	imr1{
+		compatible = "renesas,r8a77970-imr-lx4";
+		reg = <0 0xfe870000 0 0x10000>;
+		interrupts = <GIC_SPI 193 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 822>;
+		power-domains = <&sysc R8A7797_PD_A3VC>;
+	};
+
+	imr2{
+		compatible = "renesas,r8a77970-imr-lx4";
+		reg = <0 0xfe880000 0 0x10000>;
+		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 821>;
+		power-domains = <&sysc R8A7797_PD_A3VC>;
+	};
+
+	imr3{
+		compatible = "renesas,r8a77970-imr-lx4";
+		reg = <0 0xfe890000 0 0x10000>;
+		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 820>;
+		power-domains = <&sysc R8A7797_PD_A3VC>;
+	};

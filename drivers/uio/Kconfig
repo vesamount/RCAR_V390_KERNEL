@@ -164,4 +164,13 @@ config UIO_HV_GENERIC
 	  to network and storage devices from userspace.
 
 	  If you compile this as a module, it will be called uio_hv_generic.
+
+config UIO_IMR
+	tristate "Renesas IMR support"
+
+	help
+	  Renesas IMR device driver.
+	  This driver supports the following SoCs:
+	  - R8A7795, R8A7796, R8A77970, R8A77980.
+
 endif
