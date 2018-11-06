@@ -25,6 +25,7 @@
 		i2c2 = &i2c2;
 		i2c3 = &i2c3;
 		i2c4 = &i2c4;
+		isp0 = &isp0;
 	};
 
 	/* External CAN clock - to be overridden by boards that provide it */
@@ -1019,7 +1020,7 @@
 			alloc-dev = <&imr_v4l2_alloc>;
 		};
 
-		isp@fec00000 {
+		isp0: isp@fec00000 {
 			compatible = "renesas,isp-r8a77970";
 			reg = <0 0xfec00000 0 0x20000>,
 			      <0 0xfed00000 0 0x10000>;
