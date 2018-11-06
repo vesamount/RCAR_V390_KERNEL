@@ -2999,7 +2999,7 @@ static int rcar_vin_probe(struct platform_device *pdev)
 
 	if ((priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
 	    priv->chip == RCAR_V3M) && !of_property_read_string(np, "csi,select", &str)) {
-		u32 ifmd = 0;
+		u32 ifmd;
 		bool match_flag = false;
 		const struct vin_gen3_ifmd *gen3_ifmd_table = NULL;
 		int vc, num;
@@ -3065,14 +3065,24 @@ static int rcar_vin_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "csi_ch:%d, vc:%d\n",
 					priv->csi_ch, priv->vc);
 
-		ifmd = VNCSI_IFMD_DES1 | VNCSI_IFMD_DES0;
+		ifmd = VNCSI_IFMD_DES0;
 
-		if (priv->chip == RCAR_H3)
+		switch (priv->chip) {
+		case RCAR_H3:
 			gen3_ifmd_table = vin_h3_vc_ifmd;
-		else if (priv->chip == RCAR_M3)
+			ifmd = VNCSI_IFMD_DES1;
+			break;
+		case RCAR_M3:
 			gen3_ifmd_table = vin_m3_vc_ifmd;
-		else if (priv->chip == RCAR_V3M)
+			ifmd = VNCSI_IFMD_DES1;
+			break;
+		case RCAR_V3M:
 			gen3_ifmd_table = vin_v3_vc_ifmd;
+			break;
+		default:
+			BUG();
+			break;
+		}
 
 		for (i = 0; i < num; i++) {
 			if ((gen3_ifmd_table[i].v_sel[priv->index].csi2_ch
@@ -3209,7 +3219,7 @@ static int rcar_vin_suspend(struct device *dev)
 
 static int rcar_vin_resume(struct device *dev)
 {
-	u32 ifmd = 0;
+	u32 ifmd;
 	bool match_flag = false;
 	const struct vin_gen3_ifmd *gen3_ifmd_table = NULL;
 	int num;
@@ -3221,15 +3231,22 @@ static int rcar_vin_resume(struct device *dev)
 	ifmd0_init = true;
 	ifmd4_init = true;
 
-	if (priv->chip == RCAR_H3) {
-		ifmd = VNCSI_IFMD_DES1 | VNCSI_IFMD_DES0;
+	ifmd = VNCSI_IFMD_DES0;
+
+	switch (priv->chip) {
+	case RCAR_H3:
 		gen3_ifmd_table = vin_h3_vc_ifmd;
-	} else if (priv->chip == RCAR_M3) {
 		ifmd = VNCSI_IFMD_DES1;
+		break;
+	case RCAR_M3:
 		gen3_ifmd_table = vin_m3_vc_ifmd;
-	} else if (priv->chip == RCAR_V3M) {
 		ifmd = VNCSI_IFMD_DES1;
+		break;
+	case RCAR_V3M:
 		gen3_ifmd_table = vin_v3_vc_ifmd;
+		break;
+	default:
+		return 0;
 	}
 
 	for (i = 0; i < num; i++) {
