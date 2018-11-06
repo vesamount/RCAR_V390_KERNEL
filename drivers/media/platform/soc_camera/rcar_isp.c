@@ -1596,40 +1596,6 @@ static int rcar_isp_get_edid(struct soc_camera_device *icd,
 	return 0;
 }
 
-#ifdef CONFIG_VIDEO_ADV_DEBUG
-static int rcar_isp_get_register(struct soc_camera_device *icd,
-				 struct v4l2_dbg_register *reg)
-{
-	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
-	struct rcar_isp_priv *priv = ici->priv;
-
-	if (reg->reg > 0x1ffff)
-		return -ERANGE;
-
-	reg->val = ioread32(priv->base + reg->reg);
-//	reg->val = ioread32(priv->interface.base + reg->reg);
-//	reg->val = ioread32(slot_ctx[0].vaddr + reg->reg);
-	reg->size = sizeof(u32);
-
-	return 0;
-}
-
-static int rcar_isp_set_register(struct soc_camera_device *icd,
-				 const struct v4l2_dbg_register *reg)
-{
-	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
-	struct rcar_isp_priv *priv = ici->priv;
-
-	if (reg->reg > 0x1ffff)
-		return -ERANGE;
-	iowrite32(reg->val, priv->base + reg->reg);
-//	iowrite32(reg->val, priv->interface.base + reg->reg);
-//	iowrite32(reg->val,slot_ctx[0].vaddr + reg->reg);
-
-	return 0;
-}
-#endif
-
 static struct soc_camera_host_ops rcar_isp_host_ops = {
 	.owner		= THIS_MODULE,
 	.add		= rcar_isp_add_device,
@@ -1645,10 +1611,6 @@ static struct soc_camera_host_ops rcar_isp_host_ops = {
 	.set_bus_param	= rcar_isp_set_bus_param,
 	.init_videobuf2	= rcar_isp_init_videobuf2,
 	.get_edid	= rcar_isp_get_edid,
-#ifdef CONFIG_VIDEO_ADV_DEBUG
-	.get_register	= rcar_isp_get_register,
-	.set_register	= rcar_isp_set_register,
-#endif
 };
 
 #ifdef CONFIG_OF
