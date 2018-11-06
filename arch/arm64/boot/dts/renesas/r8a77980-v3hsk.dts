@@ -36,15 +36,7 @@
 		/* device specific region for Lossy Decompression */
 		lossy_decompress: linux,lossy_decompress {
 			no-map;
-			reg = <0x00000000 0x6c000000 0x0 0x03000000>;
-		};
-
-		/* global autoconfigured region for contiguous allocations */
-		linux,cma {
-			compatible = "shared-dma-pool";
-			reusable;
-			reg = <0x00000000 0x6f000000 0x0 0x10000000>;
-			linux,cma-default;
+			reg = <0x00000000 0x7c000000 0x0 0x03000000>;
 		};
 
 		/* device specific region for contiguous allocations */
