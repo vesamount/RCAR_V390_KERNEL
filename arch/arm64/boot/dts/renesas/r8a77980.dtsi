@@ -23,6 +23,8 @@
 		i2c3 = &i2c3;
 		i2c4 = &i2c4;
 		i2c5 = &i2c5;
+		isp0 = &isp0;
+		isp1 = &isp1;
 	};
 
 	/* External CAN clock - to be overridden by boards that provide it */
@@ -1435,7 +1437,7 @@
 			power-domains = <&sysc R8A77980_PD_A3VIP2>;
 		};
 
-		isp@fec00000 {
+		isp0: isp@fec00000 {
 			compatible = "renesas,isp-r8a77980";
 			reg = <0 0xfec00000 0 0x20000>,
 			      <0 0xfed00000 0 0x10000>;
@@ -1445,7 +1447,7 @@
 			power-domains = <&sysc R8A77980_PD_ALWAYS_ON>;
 		};
 
-		isp@fee00000 {
+		isp1: isp@fee00000 {
 			compatible = "renesas,isp-r8a77980";
 			reg = <0 0xfee00000 0 0x20000>,
 			      <0 0xfed20000 0 0x10000>;
