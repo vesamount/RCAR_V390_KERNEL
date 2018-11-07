@@ -115,7 +115,7 @@
 		csi2_40_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
-			csi-rate = <1450>;
+			csi-rate = <1500>;
 		};
 	};
 };
@@ -130,7 +130,7 @@
 		csi2_41_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
-			csi-rate = <1450>;
+			csi-rate = <1500>;
 		};
 	};
 };
@@ -200,7 +200,7 @@
 					ov106xx_in2: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
-						remote-endpoint = <&vin6ep0>;
+						remote-endpoint = <&vin4ep0>;
 					};
 				};
 				port@1 {
@@ -218,7 +218,7 @@
 					ov106xx_in3: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
-						remote-endpoint = <&vin7ep0>;
+						remote-endpoint = <&vin5ep0>;
 					};
 				};
 				port@1 {
@@ -237,6 +237,8 @@
 				ti,lanes = <4>;
 				ti,forwarding-mode = "round-robin";
 				ti,cable-mode = "coax";
+				ti,vc-map = <0x1010>;
+				ti,csi1-links = <0 1>;
 				gpios = <&gpio_exp_ch0 13 GPIO_ACTIVE_LOW>;
 				POC0-gpios = <&gpio_exp_ch0 8 GPIO_ACTIVE_HIGH>;
 				POC1-gpios = <&gpio_exp_ch0 9 GPIO_ACTIVE_HIGH>;
@@ -267,7 +269,7 @@
 				};
 				port@1 {
 					ti9x4_csi0ep0: endpoint {
-						csi-rate = <1450>;
+						csi-rate = <1500>;
 						remote-endpoint = <&csi2_40_ep>;
 					};
 				};
@@ -322,7 +324,7 @@
 				clock-names = "clk_in";
 
 				assigned-clocks = <&cs2300>;
-				assigned-clock-rates = <22500000>;
+				assigned-clock-rates = <23500000>;
 			};
 		};
 
@@ -566,7 +568,7 @@
 	};
 };
 
-&vin6 {
+&vin4 {
 	status = "okay";
 
 	ports {
@@ -574,9 +576,9 @@
 		#size-cells = <0>;
 
 		port@0 {
-			vin6ep0: endpoint {
+			vin4ep0: endpoint {
 				csi,select = "csi41";
-				virtual,channel = <2>;
+				virtual,channel = <0>;
 				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in2>;
 			};
@@ -587,14 +589,14 @@
 			};
 		};
 		port@2 {
-			vin6_ti9x4_des0ep2: endpoint@1 {
+			vin4_ti9x4_des0ep2: endpoint@1 {
 				remote-endpoint = <&ti9x4_des0ep2>;
 			};
 		};
 	};
 };
 
-&vin7 {
+&vin5 {
 	status = "okay";
 
 	ports {
@@ -602,9 +604,9 @@
 		#size-cells = <0>;
 
 		port@0 {
-			vin7ep0: endpoint {
+			vin5ep0: endpoint {
 				csi,select = "csi41";
-				virtual,channel = <3>;
+				virtual,channel = <1>;
 				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in3>;
 			};
@@ -615,7 +617,7 @@
 			};
 		};
 		port@2 {
-			vin7_ti9x4_des0ep3: endpoint@1 {
+			vin5_ti9x4_des0ep3: endpoint@1 {
 				remote-endpoint = <&ti9x4_des0ep3>;
 			};
 		};
