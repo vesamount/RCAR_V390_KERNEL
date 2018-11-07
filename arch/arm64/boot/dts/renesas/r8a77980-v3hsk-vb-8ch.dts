@@ -108,25 +108,6 @@
 &csi40 {
 	status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
-
 	port {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -142,32 +123,13 @@
 &csi41 {
 	status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
-
 	port {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
 		csi2_41_ep: endpoint {
 			clock-lanes = <0>;
-			data-lanes = <1 2 3>;
+			data-lanes = <1 2 3 4>;
 			csi-rate = <1450>;
 		};
 	};
@@ -359,7 +321,7 @@
 				port@0 {
 					ov106xx_in4: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin4ep0>;
 					};
 				};
@@ -377,7 +339,7 @@
 				port@0 {
 					ov106xx_in5: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin5ep0>;
 					};
 				};
@@ -395,7 +357,7 @@
 				port@0 {
 					ov106xx_in6: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin6ep0>;
 					};
 				};
@@ -413,7 +375,7 @@
 				port@0 {
 					ov106xx_in7: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin7ep0>;
 					};
 				};
@@ -430,7 +392,7 @@
 				clock-names = "ref_clk";
 				reg = <0x3a>;
 				ti,links = <4>;
-				ti,lanes = <3>;
+				ti,lanes = <4>;
 				ti,forwarding-mode = "round-robin";
 				ti,cable-mode = "coax";
 				gpios = <&gpio_exp_ch1 13 GPIO_ACTIVE_LOW>;
@@ -682,10 +644,21 @@
 		function = "i2c1";
 	};
 
+	pwm0_pins: pwm0 {
+		groups = "pwm0_a";
+		function = "pwm0";
+	};
+
 	scif3_pins: scif3 {
 		groups = "scif3_data";
 		function = "scif3";
 	};
+};
+
+&pwm0 {
+	pinctrl-0 = <&pwm0_pins>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &scif3 {
@@ -822,7 +795,7 @@
 			vin4ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <0>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in4>;
 			};
 		};
@@ -850,7 +823,7 @@
 			vin5ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <1>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in5>;
 			};
 		};
@@ -878,7 +851,7 @@
 			vin6ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <2>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in6>;
 			};
 		};
@@ -906,7 +879,7 @@
 			vin7ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <3>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in7>;
 			};
 		};

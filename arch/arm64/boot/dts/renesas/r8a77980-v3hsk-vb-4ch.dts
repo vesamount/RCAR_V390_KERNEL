@@ -108,32 +108,13 @@
 &csi40 {
 	status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
-
 	port {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
 		csi2_40_ep: endpoint {
 			clock-lanes = <0>;
-			data-lanes = <1 2 3>;
+			data-lanes = <1 2 3 4>;
 			csi-rate = <1450>;
 		};
 	};
@@ -142,32 +123,13 @@
 &csi41 {
 	status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
-
 	port {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
 		csi2_41_ep: endpoint {
 			clock-lanes = <0>;
-			data-lanes = <1 2 3>;
+			data-lanes = <1 2 3 4>;
 			csi-rate = <1450>;
 		};
 	};
@@ -201,7 +163,7 @@
 				port@0 {
 					ov106xx_in0: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin0ep0>;
 					};
 				};
@@ -219,7 +181,7 @@
 				port@0 {
 					ov106xx_in1: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin1ep0>;
 					};
 				};
@@ -237,7 +199,7 @@
 				port@0 {
 					ov106xx_in2: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin6ep0>;
 					};
 				};
@@ -255,7 +217,7 @@
 				port@0 {
 					ov106xx_in3: endpoint {
 						clock-lanes = <0>;
-						data-lanes = <1 2 3>;
+						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin7ep0>;
 					};
 				};
@@ -272,7 +234,7 @@
 				clock-names = "ref_clk";
 				reg = <0x3a>;
 				ti,links = <4>;
-				ti,lanes = <3>;
+				ti,lanes = <4>;
 				ti,forwarding-mode = "round-robin";
 				ti,cable-mode = "coax";
 				gpios = <&gpio_exp_ch0 13 GPIO_ACTIVE_LOW>;
@@ -559,7 +521,7 @@
 			vin0ep0: endpoint {
 				csi,select = "csi40";
 				virtual,channel = <0>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in0>;
 			};
 		};
@@ -587,7 +549,7 @@
 			vin1ep0: endpoint {
 				csi,select = "csi40";
 				virtual,channel = <1>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in1>;
 			};
 		};
@@ -615,7 +577,7 @@
 			vin6ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <2>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in2>;
 			};
 		};
@@ -643,7 +605,7 @@
 			vin7ep0: endpoint {
 				csi,select = "csi41";
 				virtual,channel = <3>;
-				data-lanes = <1 2 3>;
+				data-lanes = <1 2 3 4>;
 				remote-endpoint = <&ov106xx_in3>;
 			};
 		};
