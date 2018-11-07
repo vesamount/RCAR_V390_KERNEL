@@ -618,6 +618,10 @@
 	status = "okay";
 };
 
+&pcie_phy {
+	status = "okay";
+};
+
 &pfc {
 	canfd0_pins: canfd0 {
 		groups = "canfd0_data_a";
