@@ -112,7 +112,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		csi2_40_ep: endpoint {
+		csi40_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
 			csi-rate = <1500>;
@@ -127,7 +127,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		csi2_41_ep: endpoint {
+		csi41_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
 			csi-rate = <1500>;
@@ -270,7 +270,7 @@
 				port@1 {
 					ti9x4_csi0ep0: endpoint {
 						csi-rate = <1500>;
-						remote-endpoint = <&csi2_40_ep>;
+						remote-endpoint = <&csi40_ep>;
 					};
 				};
 			};
@@ -529,7 +529,7 @@
 		};
 		port@1 {
 			csi0ep0: endpoint {
-				remote-endpoint = <&csi2_40_ep>;
+				remote-endpoint = <&csi40_ep>;
 			};
 		};
 		port@2 {
@@ -557,7 +557,7 @@
 		};
 		port@1 {
 			csi0ep1: endpoint {
-				remote-endpoint = <&csi2_40_ep>;
+				remote-endpoint = <&csi40_ep>;
 			};
 		};
 		port@2 {
@@ -585,7 +585,7 @@
 		};
 		port@1 {
 			csi1ep2: endpoint {
-				remote-endpoint = <&csi2_41_ep>;
+				remote-endpoint = <&csi41_ep>;
 			};
 		};
 		port@2 {
@@ -613,7 +613,7 @@
 		};
 		port@1 {
 			csi1ep3: endpoint {
-				remote-endpoint = <&csi2_41_ep>;
+				remote-endpoint = <&csi41_ep>;
 			};
 		};
 		port@2 {
