@@ -250,7 +250,7 @@
 				};
 				port@1 {
 					ti9x4_csi0ep0: endpoint {
-						csi-rate = <700>;
+						csi-rate = <1450>;
 						remote-endpoint = <&csi41_ep>;
 					};
 				};
