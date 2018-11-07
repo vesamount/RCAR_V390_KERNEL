@@ -17,10 +17,8 @@
 #include <linux/of_graph.h>
 #include <linux/videodev2.h>
 
-#include <media/v4l2-async.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
 #include "max9286.h"
@@ -45,6 +43,7 @@ struct max9286_priv {
 	int			csi_rate;
 	const char		*fsync_mode;
 	int			fsync_period;
+	int			pclk;
 	char			pclk_rising_edge;
 	int			gpio_resetb;
 	int			active_low_resetb;
@@ -53,12 +52,26 @@ struct max9286_priv {
 	int			vsync;
 	int			timeout;
 	int			poc_delay;
+	int			bws;
+	int			dbl;
+	int			dt;
+	int			hsgen;
+	int			hts;
+	int			vts;
+	int			hts_delay;
+	int			imager_width;
 	atomic_t		use_count;
 	u32			csi2_outord;
+	u32			switchin;
 	struct i2c_client	*client;
 	int			max9271_addr_map[4];
 	int			ser_id;
 	struct gpio_desc	*poc_gpio[4]; /* PoC power supply */
+
+	/* link statistic */
+	int			prbserr[4];
+	int			deterr[4];
+	int			correrr[4];
 };
 
 static char fsync_mode_default[20] = "manual"; /* manual, automatic, semi-automatic, external */
@@ -95,9 +108,57 @@ static int active_low_resetb;
 module_param(active_low_resetb, int, 0644);
 MODULE_PARM_DESC(active_low_resetb, " Serializer GPIO reset level (default: 0 - active high)");
 
-static int poc_delay;
+static int poc_delay = 50;
 module_param(poc_delay, int, 0644);
-MODULE_PARM_DESC(poc_delay, " Delay in ms after POC enable (default: 0 ms)");
+MODULE_PARM_DESC(poc_delay, " Delay in ms after POC enable (default: 50 ms)");
+
+static int bws;
+module_param(bws, int, 0644);
+MODULE_PARM_DESC(bws, " BWS mode (default: 0 - 24-bit gmsl packets)");
+
+static int dbl = 1;
+module_param(dbl, int, 0644);
+MODULE_PARM_DESC(dbl, " DBL mode (default: 1 - DBL mode enabled)");
+
+static int dt = 3;
+module_param(dt, int, 0644);
+MODULE_PARM_DESC(dt, " DataType (default: 3 - YUV8), 0 - RGB888, 5 - RAW8, 6 - RAW10, 7 - RAW12, 8 - RAW14");
+
+static int hsgen;
+module_param(hsgen, int, 0644);
+MODULE_PARM_DESC(hsgen, " Enable HS embedded generator (default: 0 - disabled)");
+
+static int pclk = 100;
+module_param(pclk, int, 0644);
+MODULE_PARM_DESC(pclk, " PCLK rate (default: 100MHz)");
+
+static int switchin = 0;
+module_param(switchin, int, 0644);
+MODULE_PARM_DESC(switchin, " COAX SWITCH IN+ and IN- (default: 0 - not switched)");
+
+enum {
+	RGB888_DT = 0,
+	RGB565_DT,
+	RGB666_DT,
+	YUV8_DT, /* default */
+	YUV10_DT,
+	RAW8_DT,
+	RAW10_DT,
+	RAW12_DT,
+	RAW14_DT,
+};
+
+static int dt2bpp [9] = {
+	24,	/* RGB888 */
+	16,	/* RGB565 */
+	18,	/* RGB666 */
+	8,	/* YUV8 - default */
+	10,	/* YUV10 */
+	8,	/* RAW8/RAW16 */
+	10,	/* RAW10 */
+	12,	/* RAW12 */
+	14,	/* RAW14 */
+};
 
 static char* ser_name(int id)
 {
@@ -106,9 +167,40 @@ static char* ser_name(int id)
 		return "MAX9271";
 	case MAX96705_ID:
 		return "MAX96705";
+	case MAX96707_ID:
+		return "MAX96707";
 	default:
 		return "unknown";
 	}
+}
+
+static void max9286_write_remote_verify(struct i2c_client *client, int idx, u8 reg, u8 val)
+{
+	struct max9286_priv *priv = i2c_get_clientdata(client);
+	int timeout;
+
+	for (timeout = 0; timeout < 10; timeout++) {
+		int tmp_addr;
+		u8 sts = 0;
+		u8 val2 = 0;
+
+		reg8_write(client, reg, val);
+
+		tmp_addr = client->addr;
+		client->addr = priv->des_addr;			/* MAX9286-CAMx I2C */
+		reg8_read(client, 0x70, &sts);
+		client->addr = tmp_addr;
+		if (sts & BIT(idx)) /* if ACKed */ {
+			reg8_read(client, reg, &val2);
+			if (val2 == val)
+				break;
+		}
+
+		usleep_range(1000, 1500);
+	}
+
+	if (timeout >= 10)
+		dev_err(&client->dev, "timeout remote write acked\n");
 }
 
 static void max9286_preinit(struct i2c_client *client, int addr)
@@ -118,8 +210,9 @@ static void max9286_preinit(struct i2c_client *client, int addr)
 	client->addr = addr;			/* MAX9286-CAMx I2C */
 	reg8_write(client, 0x0a, 0x00);		/* disable reverse control for all cams */
 	reg8_write(client, 0x00, 0x00);		/* disable all GMSL links [0:3] */
-	usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
-	reg8_write(client, 0x1c, priv->him ? 0xf4 : 0x04); /* high-immunity or legacy mode */
+//	usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+	reg8_write(client, 0x1b, priv->switchin); /* coax polarity (default - normal) */
+	reg8_write(client, 0x1c, priv->him ? 0xf4 : 0x04); /* high-immunity/legacy mode, BWS: 24-bit */
 }
 
 static void max9286_sensor_reset(struct i2c_client *client, int addr, int reset_on)
@@ -142,11 +235,16 @@ static void max9286_postinit(struct i2c_client *client, int addr)
 	int idx;
 
 	for (idx = 0; idx < priv->links; idx++) {
+		if (priv->ser_id == MAX96705_ID || priv->ser_id == MAX96707_ID)
+			continue;
+
 		client->addr = priv->des_addr;			/* MAX9286 I2C */
+		reg8_write(client, 0x00, 0xe0 | BIT(idx));	/* enable GMSL link for CAMx */
 		reg8_write(client, 0x0a, 0x11 << idx);		/* enable reverse/forward control for CAMx */
+		usleep_range(5000, 5500);			/* wait 2ms after any change of reverse channel settings */
 
 		client->addr = priv->max9271_addr_map[idx];	/* MAX9271-CAMx I2C */
-		max9286_sensor_reset(client, client->addr, 0); /* sensor unreset */
+		max9286_sensor_reset(client, client->addr, 0);	/* sensor unreset using gpios. TODO: should be in imager driver */
 	}
 
 	client->addr = addr;					/* MAX9286 I2C */
@@ -154,7 +252,9 @@ static void max9286_postinit(struct i2c_client *client, int addr)
 	reg8_write(client, 0x00, 0xe0 | priv->links_mask);	/* enable GMSL link for CAMs */
 	reg8_write(client, 0x0b, priv->csi2_outord);		/* CSI2 output order */
 	reg8_write(client, 0x15, 0x9b);				/* enable CSI output, VC is set accordingly to Link number, BIT7 magic must be set */
-	reg8_write(client, 0x1b, priv->links_mask);		/* enable equalizer for CAMs */
+	reg8_write(client, 0x1b, priv->switchin | priv->links_mask); /* coax polarity, enable equalizer for CAMs */
+	reg8_write(client, 0x1c, (priv->him ? 0xf0 : 0x00) |
+				 (priv->bws ? 0x05 : 0x04));	/* high-immunity/legacy mode, BWS 24/32-bit */
 	usleep_range(5000, 5500);				/* wait 2ms after any change of reverse channel settings */
 
 	if (strcmp(priv->fsync_mode, "manual") == 0) {
@@ -178,7 +278,6 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 
 	/* Reverse channel enable */
 	client->addr = priv->des_addr;				/* MAX9286-CAMx I2C */
-	reg8_write(client, 0x3f, 0x4f);				/* enable custom reverse channel & first pulse length */
 	reg8_write(client, 0x34, 0xa2 | MAXIM_I2C_I2C_SPEED);	/* enable artificial ACKs, I2C speed set */
 	usleep_range(2000, 2500);				/* wait 2ms after any change of reverse channel settings */
 	reg8_write(client, 0x00, 0xe0 | BIT(idx));		/* enable GMSL link for CAMx */
@@ -186,24 +285,35 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 	usleep_range(2000, 2500);				/* wait 2ms after any change of reverse channel settings */
 
 	for (;;) {
-		client->addr = priv->des_addr;			/* MAX9286-CAMx I2C */
-		reg8_write(client, 0x3b, 0x1e);			/* first pulse length rise time changed from 300ns to 200ns, amplitude 100mV */
-		usleep_range(2000, 2500);			/* wait 2ms after any change of reverse channel settings */
+		if (priv->him) {
+			/* HIM mode setup */
+			client->addr = 0x40;			/* MAX9271-CAMx I2C */
+			reg8_write(client, 0x4d, 0xc0);
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+			reg8_write(client, 0x04, 0x43);		/* wake-up, enable reverse_control/conf_link */
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+		} else {
+			/* Legacy mode setup */
+			client->addr = priv->des_addr;		/* MAX9286-CAMx I2C */
+			reg8_write(client, 0x3f, 0x4f);		/* enable custom reverse channel & first pulse length */
+			reg8_write(client, 0x3b, 0x1e);		/* first pulse length rise time changed from 300ns to 200ns, amplitude 100mV */
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
 
-		client->addr = 0x40;				/* MAX9271-CAMx I2C */
-		reg8_write(client, 0x04, 0x43);			/* wake-up, enable reverse_control/conf_link */
-		usleep_range(2000, 2500);			/* wait 2ms after any change of reverse channel settings */
-		reg8_write(client, 0x08, 0x01);			/* reverse channel receiver high threshold enable */
-		reg8_write(client, 0x97, priv->him ? 0xaf : 0x5f); /* enable reverse control channel programming (MAX96705-MAX96711 only) */
-		usleep_range(2000, 2500);			/* wait 2ms after any change of reverse channel settings */
+			client->addr = 0x40;			/* MAX9271-CAMx I2C */
+			reg8_write(client, 0x04, 0x43);		/* wake-up, enable reverse_control/conf_link */
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+			reg8_write(client, 0x08, 0x01);		/* reverse channel receiver high threshold enable */
+			reg8_write(client, 0x97, 0x5f);		/* enable reverse control channel programming (MAX96705-MAX96711 only) */
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
 
-		client->addr = priv->des_addr;			/* MAX9286-CAMx I2C */
-		reg8_write(client, 0x3b, 0x19);			/* reverse channel increase amplitude 170mV to compensate high threshold enabled */
-		usleep_range(2000, 2500);			/* wait 2ms after any change of reverse channel settings */
+			client->addr = priv->des_addr;		/* MAX9286-CAMx I2C */
+			reg8_write(client, 0x3b, 0x19);		/* reverse channel increase amplitude 170mV to compensate high threshold enabled */
+			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+		}
 
 		client->addr = 0x40;				/* MAX9271-CAMx I2C */
 		reg8_read(client, 0x1e, &val);			/* read max9271 ID */
-		if (val == MAX9271_ID || val == MAX96705_ID || --timeout == 0) {
+		if (val == MAX9271_ID || val == MAX96705_ID || val == MAX96707_ID || --timeout == 0) {
 			priv->ser_id = val;
 			break;
 		}
@@ -211,7 +321,7 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 		/* Check if already initialized (after reboot/reset ?) */
 		client->addr = priv->max9271_addr_map[idx];	/* MAX9271-CAMx I2C */
 		reg8_read(client, 0x1e, &val);			/* read max9271 ID */
-		if (val == MAX9271_ID || val == MAX96705_ID) {
+		if (val == MAX9271_ID || val == MAX96705_ID || val == MAX96707_ID) {
 			priv->ser_id = val;
 			reg8_write(client, 0x04, 0x43);		/* enable reverse_control/conf_link */
 			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
@@ -258,22 +368,9 @@ static void max9286_initial_setup(struct i2c_client *client)
 	client->addr = priv->des_addr;				/* MAX9286-CAMx I2C */
 	reg8_write(client, 0x15, 0x13);				/* disable CSI output, VC is set accordingly to Link number */
 	reg8_write(client, 0x69, 0x0f);				/* mask CSI forwarding from all links */
-	switch (priv->lanes) {
-	case 1:
-		reg8_write(client, 0x12, 0x33);			/* enable CSI-2 Lane D0, DBL mode, YUV422 8-bit*/
-		break;
-	case 2:
-		reg8_write(client, 0x12, 0x73);			/* enable CSI-2 Lanes D0,D1, DBL mode, YUV422 8-bit*/
-		break;
-	case 3:
-		reg8_write(client, 0x12, 0xd3);			/* enable CSI-2 Lanes D0-D2, DBL mode, YUV422 8-bit*/
-		break;
-	case 4:
-		reg8_write(client, 0x12, 0xf3);			/* enable CSI-2 Lanes D0-D3, DBL mode, YUV422 8-bit*/
-		break;
-	default:
-		dev_err(&client->dev, "CSI2 lanes number is invalid (%d)\n", priv->lanes);
-	}
+	reg8_write(client, 0x12, ((priv->lanes - 1) << 6) |
+				 (priv->dbl ? 0x30 : 0) |
+				 (priv->dt & 0xf));		/* setup lanes, DBL mode, DataType */
 
 	/* Start GMSL initialization with FSYNC disabled. This is required for some odd LVDS cameras */
 	reg8_write(client, 0x01, 0xc0);				/* ECU (aka MCU) based FrameSync using GPI-to-GPO */
@@ -294,30 +391,96 @@ static void max9286_gmsl_link_setup(struct i2c_client *client, int idx)
 	/* GMSL setup */
 	client->addr = 0x40;					/* MAX9271-CAMx I2C */
 	reg8_write(client, 0x0d, 0x22 | MAXIM_I2C_I2C_SPEED);	/* disable artificial ACK, I2C speed set */
-	reg8_write(client, 0x07, 0x84 | (priv->pclk_rising_edge ? 0 : 0x10)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled */
+	reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) | (priv->dbl ? 0x80 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24-bit */
 	usleep_range(2000, 2500);				/* wait 2ms */
 	reg8_write(client, 0x02, 0xff);				/* spread spectrum +-4%, pclk range automatic, Gbps automatic  */
 	usleep_range(2000, 2500);				/* wait 2ms */
 
-	if (priv->ser_id == MAX96705_ID) {
-		/* setup crossbar in DBL mode: reverse DVP bus */
-		reg8_write(client, 0x20, 0x07);
-		reg8_write(client, 0x21, 0x06);
-		reg8_write(client, 0x22, 0x05);
-		reg8_write(client, 0x23, 0x04);
-		reg8_write(client, 0x24, 0x03);
-		reg8_write(client, 0x25, 0x02);
-		reg8_write(client, 0x26, 0x01);
-		reg8_write(client, 0x27, 0x00);
+	if (priv->ser_id == MAX96705_ID || priv->ser_id == MAX96707_ID) {
+		switch (priv->dt) {
+		case YUV8_DT:
+			/* setup crossbar for YUV8/RAW8: reverse DVP bus */
+			reg8_write(client, 0x20, 7);
+			reg8_write(client, 0x21, 6);
+			reg8_write(client, 0x22, 5);
+			reg8_write(client, 0x23, 4);
+			reg8_write(client, 0x24, 3);
+			reg8_write(client, 0x25, 2);
+			reg8_write(client, 0x26, 1);
+			reg8_write(client, 0x27, 0);
 
-		reg8_write(client, 0x30, 0x17);
-		reg8_write(client, 0x31, 0x16);
-		reg8_write(client, 0x32, 0x15);
-		reg8_write(client, 0x33, 0x14);
-		reg8_write(client, 0x34, 0x13);
-		reg8_write(client, 0x35, 0x12);
-		reg8_write(client, 0x36, 0x11);
-		reg8_write(client, 0x37, 0x10);
+			/* this is second byte if DBL=1 */
+			reg8_write(client, 0x30, 23);
+			reg8_write(client, 0x31, 22);
+			reg8_write(client, 0x32, 21);
+			reg8_write(client, 0x33, 20);
+			reg8_write(client, 0x34, 19);
+			reg8_write(client, 0x35, 18);
+			reg8_write(client, 0x36, 17);
+			reg8_write(client, 0x37, 16);
+
+			break;
+		case RAW12_DT:
+			/* setup crossbar for RAW12: reverse DVP bus */
+			reg8_write(client, 0x20, 11);
+			reg8_write(client, 0x21, 10);
+			reg8_write(client, 0x22, 9);
+			reg8_write(client, 0x23, 8);
+			reg8_write(client, 0x24, 7);
+			reg8_write(client, 0x25, 6);
+			reg8_write(client, 0x26, 5);
+			reg8_write(client, 0x27, 4);
+			reg8_write(client, 0x28, 3);
+			reg8_write(client, 0x29, 2);
+			reg8_write(client, 0x2a, 1);
+			reg8_write(client, 0x2b, 0);
+
+			/* this is second byte if DBL=1 */
+			reg8_write(client, 0x30, 27);
+			reg8_write(client, 0x31, 26);
+			reg8_write(client, 0x32, 25);
+			reg8_write(client, 0x33, 24);
+			reg8_write(client, 0x34, 23);
+			reg8_write(client, 0x35, 22);
+			reg8_write(client, 0x36, 21);
+			reg8_write(client, 0x37, 20);
+			reg8_write(client, 0x38, 19);
+			reg8_write(client, 0x39, 18);
+			reg8_write(client, 0x3a, 17);
+			reg8_write(client, 0x3b, 16);
+
+			if (!priv->bws && priv->dbl)
+				dev_err(&client->dev, " BWS must be 27/32-bit for RAW12 in DBL mode\n");
+
+			break;
+		}
+
+		if (priv->hsgen) {
+			/* HS/VS pins map */
+			reg8_write(client, 0x3f, 0x10);			/* HS (NC) */
+			reg8_write(client, 0x41, 0x10);			/* DE (NC) */
+			if (priv->ser_id == MAX96705_ID)
+				reg8_write(client, 0x40, 15);		/* VS (DIN13) */
+			if (priv->ser_id == MAX96707_ID)
+				reg8_write(client, 0x40, 13);		/* VS (DIN13) */
+#if 0
+			/* following must come from imager */
+#define SENSOR_WIDTH	(1280*2)
+#define HTS		(1288*2)
+#define VTS		960
+#define HTS_DELAY	0x9
+			reg8_write(client, 0x4e, HTS_DELAY >> 16);	/* HS delay */
+			reg8_write(client, 0x4f, (HTS_DELAY >> 8) & 0xff);
+			reg8_write(client, 0x50, HTS_DELAY & 0xff);
+			reg8_write(client, 0x54, SENSOR_WIDTH >> 8);	/* HS high period */
+			reg8_write(client, 0x55, SENSOR_WIDTH & 0xff);
+			reg8_write(client, 0x56, (HTS - SENSOR_WIDTH) >> 8); /* HS low period */
+			reg8_write(client, 0x57, (HTS - SENSOR_WIDTH) & 0xff);
+			reg8_write(client, 0x58, VTS >> 8);		/* HS count */
+			reg8_write(client, 0x59, VTS & 0xff );
+#endif
+			reg8_write(client, 0x43, 0x15);			/* enable HS generator */
+		}
 	}
 
 	client->addr = priv->des_addr;				/* MAX9286-CAMx I2C */
@@ -344,6 +507,9 @@ static void max9286_gmsl_link_setup(struct i2c_client *client, int idx)
 	client->addr = priv->max9271_addr_map[idx];		/* MAX9271-CAMx I2C new */
 	maxim_max927x_dump_regs(client);
 #endif
+	reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) |
+					(priv->dbl ? 0x80 : 0) |
+					(priv->bws ? 0x20 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24/32-bit */
 }
 
 static int max9286_initialize(struct i2c_client *client)
@@ -439,8 +605,8 @@ static int max9286_registered_async(struct v4l2_subdev *sd)
 	reg8_write(client, 0x0a, 0x11 << idx);			/* enable reverse/forward control for CAMx */
 
 	client->addr = priv->max9271_addr_map[idx];		/* MAX9271-CAMx */
-	reg8_write(client, 0x04, conf_link ? 0x43 : 0x83);	/* enable serial_link */
-	usleep_range(2000, 2500);				/* wait 2ms after changing reverse_control */
+	max9286_write_remote_verify(client, idx, 0x04, conf_link ? 0x43 : 0x83);
+//	usleep_range(2000, 2500);				/* wait 2ms after changing reverse_control */
 
 	client->addr = priv->des_addr;				/* MAX9286 I2C */
 	reg8_write(client, 0x0a, (priv->links_mask << 4) | priv->links_mask); /* enable reverse/forward control for all CAMs */
@@ -491,7 +657,7 @@ static int max9286_parse_dt(struct i2c_client *client)
 
 	for (i = 0; i < 4; i++) {
 		sprintf(poc_name, "POC%d", i);
-		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, poc_name, 0);
+		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, kstrdup(poc_name, GFP_KERNEL), 0);
 	}
 
 	reg8_read(client, 0x1e, &val);				/* read max9286 ID */
@@ -536,6 +702,19 @@ static int max9286_parse_dt(struct i2c_client *client)
 		priv->vsync = 1;
 	if (of_property_read_u32(np, "maxim,poc-delay", &priv->poc_delay))
 		priv->poc_delay = 50;
+	if (of_property_read_u32(np, "maxim,bws", &priv->bws))
+		priv->bws = 0;
+	if (of_property_read_u32(np, "maxim,dbl", &priv->dbl))
+		priv->dbl = 1;
+	if (of_property_read_u32(np, "maxim,dt", &priv->dt))
+		priv->dt = 3;
+	if (of_property_read_u32(np, "maxim,hsgen", &priv->hsgen))
+		priv->hsgen = 0;
+	if (of_property_read_u32(np, "maxim,pclk", &priv->pclk))
+		priv->pclk = pclk;
+	if (of_property_read_u32(np, "maxim,switchin", &priv->switchin))
+		priv->switchin = 0;
+
 
 	/* module params override dts */
 	if (him)
@@ -554,6 +733,18 @@ static int max9286_parse_dt(struct i2c_client *client)
 		priv->active_low_resetb = active_low_resetb;
 	if (poc_delay)
 		priv->poc_delay = poc_delay;
+	if (bws)
+		priv->bws = bws;
+	if (!dbl)
+		priv->dbl = dbl;
+	if (dt != 3)
+		priv->dt = dt;
+	if (hsgen)
+		priv->hsgen = hsgen;
+	if (pclk != 100)
+		priv->pclk = pclk;
+	if (switchin)
+		priv->switchin = switchin;
 
 	for (i = 0; i < priv->links; i++) {
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
@@ -592,8 +783,8 @@ static void max9286_setup_remote_endpoint(struct i2c_client *client)
 
 		csi_rate_prop = of_find_property(endpoint, "csi-rate", NULL);
 		if (csi_rate_prop) {
-			/* CSI2_RATE = PCLK*sizeof(YUV8)*links/lanes */
-			priv->csi_rate = cpu_to_be32(100 * 8 * hweight8(priv->links_mask) / priv->lanes);
+			/* CSI2_RATE = PCLK*bpp*links/lanes */
+			priv->csi_rate = cpu_to_be32(priv->pclk * dt2bpp[priv->dt] * hweight8(priv->links_mask) / priv->lanes);
 			csi_rate_prop->value = &priv->csi_rate;
 			of_update_property(rendpoint, csi_rate_prop);
 		}
@@ -605,6 +796,86 @@ static void max9286_setup_remote_endpoint(struct i2c_client *client)
 
 	of_node_put(endpoint);
 }
+
+static const char *line_status[] =
+{
+	"BAT",
+	"GND",
+	"NORMAL",
+	"OPEN"
+};
+
+static ssize_t max9286_link_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	int i = -1;
+	u8 val = 0;
+	bool lenghterr, linebuffof, hlocked, prbsok, vsyncdet, configdet, videodet;
+	int lf;
+	u8 prbserr = 0, deterr = 0, correrr = 0;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct max9286_priv *priv = i2c_get_clientdata(client);
+
+	if (!sscanf(attr->attr.name, "link_%d", &i))
+                return -EINVAL;
+
+	if ((i < 0) || (i > 3))
+		return -EINVAL;
+
+	reg8_read(client, 0x20, &val);
+	lf = (val >> (2 * i)) & 0x03;
+
+	reg8_read(client, 0x21, &val);
+	hlocked = !!(val & (1 << i));
+	prbsok = !!(val & (1 << (i + 4)));
+
+	reg8_read(client, 0x22, &val);
+	lenghterr = !!(val & (1 << i));
+	linebuffof = !!(val & (1 << (i + 4)));
+
+	reg8_read(client, 0x23 + i, &prbserr);
+	priv->prbserr[i] += prbserr;
+
+	reg8_read(client, 0x27, &val);
+	vsyncdet = !!(val & (1 << i));
+
+	reg8_read(client, 0x28 + i, &deterr);
+	priv->deterr[i] += deterr;
+
+	reg8_read(client, 0x2c + i, &correrr);
+	priv->correrr[i] += correrr;
+
+	reg8_read(client, 0x49, &val);
+	configdet = !!(val & (1 << i));
+	videodet = !!(val & (1 << (i + 4)));
+
+	return sprintf(buf, "LINK:%d LF:%s HLOCKED:%d PRBSOK:%d LINBUFFOF:%d"
+		" LENGHTERR:%d VSYNCDET:%d CONFIGDET:%d VIDEODET:%d"
+		" PRBSERR:%d(%d) DETEERR:%d(%d) CORRERR:%d(%d)\n",
+		i, line_status[lf], hlocked, prbsok, lenghterr,
+		linebuffof, vsyncdet, configdet, videodet,
+		priv->prbserr[i], prbserr,
+		priv->deterr[i], deterr,
+		priv->correrr[i], correrr);
+	return 0;
+}
+
+static DEVICE_ATTR(link_0, S_IRUGO, max9286_link_show, NULL);
+static DEVICE_ATTR(link_1, S_IRUGO, max9286_link_show, NULL);
+static DEVICE_ATTR(link_2, S_IRUGO, max9286_link_show, NULL);
+static DEVICE_ATTR(link_3, S_IRUGO, max9286_link_show, NULL);
+
+static struct attribute *max9286_attributes_links[] = {
+        &dev_attr_link_0.attr,
+        &dev_attr_link_1.attr,
+        &dev_attr_link_2.attr,
+        &dev_attr_link_3.attr,
+        NULL
+};
+
+static const struct attribute_group max9286_group = {
+        .attrs = max9286_attributes_links,
+};
 
 static int max9286_probe(struct i2c_client *client,
 				 const struct i2c_device_id *did)
@@ -648,6 +919,11 @@ static int max9286_probe(struct i2c_client *client,
 		if (err < 0)
 			goto out;
 	}
+
+	err = sysfs_create_group(&client->dev.kobj,
+                                &max9286_group);
+        if (err < 0)
+                dev_err(&client->dev, "Sysfs registration failed\n");
 out:
 	return err;
 }
@@ -656,6 +932,8 @@ static int max9286_remove(struct i2c_client *client)
 {
 	struct max9286_priv *priv = i2c_get_clientdata(client);
 	int i;
+
+	sysfs_remove_group(&client->dev.kobj,  &max9286_group);
 
 	for (i = 0; i < 4; i++) {
 		v4l2_async_unregister_subdev(&priv->sd[i]);

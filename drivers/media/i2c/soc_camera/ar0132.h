@@ -14,16 +14,15 @@
 
 #define AR0132_EMBEDDED_LINE
 
-#define AR0132_MAX_WIDTH		1665 // (1110*3/2)
+#define AR0132_MAX_WIDTH		1104
 #define AR0132_MAX_HEIGHT		624
 
 #define AR0132_DELAY			0xffff
 
 #define AR0132_MAX_ROI_DIM_X		1288
 #define AR0132_MAX_ROI_DIM_Y		968
-#define AR0132_InfoLines		4
 
-#define AR0132_ROI_DIM_X		1110 // 1104
+#define AR0132_ROI_DIM_X		1104
 #define AR0132_ROI_DIM_Y		620 // AR0132_MAX_HEIGHT
 
 #define AR0132_ROI_Y_START		0x00AE
@@ -57,11 +56,11 @@ static const struct ar0132_reg ar0132_regs_wizard[] = {
 			//256: Walking 1 test pattern (12 bit)
 #ifdef AR0132_DISPLAY_PATTERN_FIXED
 {0x3070, 0x0001},
+#endif
 {0x3072, 0x0123},	// R
 {0x3074, 0x0456},	// G(GR row)
 {0x3076, 0x0abc},	// B
 {0x3078, 0x0def},	// G(GB row)
-#endif
 #ifdef AR0132_DISPLAY_PATTERN_COLOR_BAR
 {0x3070, 0x0002},
 #endif
@@ -150,7 +149,7 @@ static const struct ar0132_reg ar0132_regs_wizard[] = {
 {0x302E, AR0132_PLL_Pre_Clk_Div},
 {0x3030, AR0132_PLL_Multiplier},
 {0x3032, 0x0000},	// SCALING_MODE = 0
-{0x3040, 0xC000},	// READ_MODE    = read_mode_vert_flip    | read_mode_horiz_mirror
+{0x3040, 0x0000},	// READ_MODE    = read_mode_vert_flip    | read_mode_horiz_mirror
 {0x3044, 0x0404},	// Dark Control = 1028
 {0x30A6, 0x0001},	// Y Odd Inc. (A) = 1
 {0x30A8, 0x0001},	// Y Odd Inc. (B) = 1

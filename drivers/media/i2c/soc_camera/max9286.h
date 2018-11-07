@@ -24,6 +24,7 @@
 #define REG16_NUM_RETRIES	10 /* number of read/write retries */
 #define MAX9271_ID		0x9
 #define MAX96705_ID		0x41
+#define MAX96707_ID		0x45 /* MAX96715: there is no HS pin */
 #define MAX9286_ID		0x40
 #define BROADCAST		0x6f
 

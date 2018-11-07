@@ -19,7 +19,6 @@
 #include <media/soc_camera.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
-#include <media/v4l2-fwnode.h>
 
 #include "ar0220.h"
 
@@ -29,7 +28,7 @@
 #define AR0220_PID		0x3000
 #define AR0220_VERSION_REG	0x0C54
 
-#define AR0220_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SBGGR8_1X8
+#define AR0220_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG14_1X14
 
 struct ar0220_priv {
 	struct v4l2_subdev		sd;
@@ -47,7 +46,6 @@ struct ar0220_priv {
 	int				port;
 	int				gpio_resetb;
 	int				gpio_fsin;
-
 };
 
 static inline struct ar0220_priv *to_ar0220(const struct i2c_client *client)
@@ -319,6 +317,7 @@ static int ar0220_initialize(struct i2c_client *client)
 	u16 val = 0;
 	u16 pid = 0;
 	int ret = 0;
+	int tmp_addr;
 
 	/* check and show model ID */
 	reg16_read16(client, AR0220_PID, &pid);
@@ -328,6 +327,16 @@ static int ar0220_initialize(struct i2c_client *client)
 		ret = -ENODEV;
 		goto err;
 	}
+
+	/* setup XCLK */
+	tmp_addr = client->addr;
+	if (priv->ti9x4_addr) {
+		/* CLK_OUT=22.5792*160*M/N/CLKDIV -> CLK_OUT=27MHz: CLKDIV=2, M=15, N=251: 22.5792*160/8*15/251=26.987MHz=CLK_OUT */
+		client->addr = priv->ti9x3_addr;			/* Serializer I2C address */
+		reg8_write(client, 0x06, 0x6f);				/* Set CLKDIV and M */
+		reg8_write(client, 0x07, 0xfb);				/* Set N */
+	}
+	client->addr = tmp_addr;
 
 	/* Program wizard registers */
 	ar0220_set_regs(client, ar0220_regs_wizard, ARRAY_SIZE(ar0220_regs_wizard));
@@ -386,11 +395,8 @@ static int ar0220_parse_dt(struct device_node *np, struct ar0220_priv *priv)
 		usleep_range(2000, 2500);				/* wait 2ms */
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
 		reg8_write(client, 0x5d, AR0220_I2C_ADDR << 1);		/* Sensor native I2C address */
-//		reg8_write(client, 0x6e, 0xa9);				/* GPIO0 - reset, GPIO1 - fsin */
 
-		client->addr = priv->ti9x3_addr;			/* Serializer I2C address */
-		reg8_write(client, 0x06, 0x41);				/* Set clock divider M */
-		reg8_write(client, 0x07, 0x25);				/* Set clock divider N = 27MHz */
+//		reg8_write(client, 0x6e, 0xa9);				/* GPIO0 - reset, GPIO1 - fsin */
 	}
 	client->addr = tmp_addr;
 

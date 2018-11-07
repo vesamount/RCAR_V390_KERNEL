@@ -1,5 +1,5 @@
 /*
- * OmniVision OV2775 sensor camera wizard 1928x1088@30/RGGB/MIPI
+ * OmniVision OV2775 sensor camera wizard 1920x1080@30/BGGR/MIPI
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -9,29 +9,29 @@
  * option) any later version.
  */
 
-//#define OV2775_DISPLAY_PATTERN_COLOR_BAR
+#define OV2775_DISPLAY_PATTERN_COLOR_BAR
 
-#define OV2775_MAX_WIDTH	2880 // (1928*1.5=2892) <- must be multiple of 16 - requred by R-CAR VIN
-#define OV2775_MAX_HEIGHT	1088
+#define OV2775_MAX_WIDTH	1920
+#define OV2775_MAX_HEIGHT	1080
 
 #define OV2775_DELAY		0xffff
-#define OV2775_DT		0x2c // MIPI Data Type
+#define OV2775_DT		0x2c /* MIPI Data Type RAW12 */
 
 struct ov2775_reg {
 	u16	reg;
 	u8	val;
 };
 
-/* wizard: MIPI 1928x1088 RAW12 Linear 30fps 960Mbps */
+/* wizard: MIPI 1920x1080 RAW12 Linear 30fps 600Mbps XCLK=25MHz  */
 static const struct ov2775_reg ov2775_regs_wizard[] = {
 {0x3013, 0x01}, // s/w reset
 {OV2775_DELAY, 10}, // Wait 10ms
-{0x3000, 0x02},
-{0x3001, 0x28},
-{0x3002, 0x03},
+{0x3000, 0x03},
+{0x3001, 0x18},
+{0x3002, 0x01},
 {0x3003, 0x01},
-{0x3004, 0x02},
-{0x3005, 0x26},
+{0x3004, 0x03},
+{0x3005, 0x1c},
 {0x3006, 0x00},
 {0x3007, 0x07},
 {0x3008, 0x01},
@@ -41,7 +41,7 @@ static const struct ov2775_reg ov2775_regs_wizard[] = {
 {0x300f, 0x00},
 {0x3012, 0x00},
 {0x3013, 0x00},
-{0x3014, 0xc4},
+{0x3014, 0x44},
 {0x3015, 0x00},
 {0x3017, 0x00},
 {0x3018, 0x00},
@@ -328,7 +328,7 @@ static const struct ov2775_reg ov2775_regs_wizard[] = {
 {0x320d, 0x1e},
 {0x320e, 0x30},
 {0x320f, 0x2d},
-{0x3210, OV2775_DT},
+{0x3210, 0x2c},
 {0x3211, 0x2b},
 {0x3212, 0x2a},
 {0x3213, 0x24},
@@ -358,7 +358,7 @@ static const struct ov2775_reg ov2775_regs_wizard[] = {
 {0x3251, 0x00},
 {0x3252, 0x20},
 #ifdef OV2775_DISPLAY_PATTERN_COLOR_BAR
-{0x3253, 0x80},
+{0x3253, 0xC0},
 #else
 {0x3253, 0x00},
 #endif
@@ -1822,9 +1822,9 @@ static const struct ov2775_reg ov2775_regs_wizard[] = {
 {0x30a9, 0x04},
 {0x30aa, 0x00},
 {0x30ab, 0x04},
-{0x30ac, 0x07},
+{0x30ac, 0x07}, /* OV2775_MAX_WIDTH */
 {0x30ad, 0x88},
-{0x30ae, 0x04},
+{0x30ae, 0x04}, /* OV2775_MAX_HEIGHT */
 {0x30af, 0x40},
 {0x30b0, 0x0d},
 {0x30b1, 0xde},

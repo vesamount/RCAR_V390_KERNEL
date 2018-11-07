@@ -19,7 +19,6 @@
 #include <media/soc_camera.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
-#include <media/v4l2-fwnode.h>
 
 #include "ov495_ov2775.h"
 
@@ -403,6 +402,7 @@ static int ov495_initialize(struct i2c_client *client)
 	struct ov495_priv *priv = to_ov495(client);
 	u8 pid = 0, ver = 0;
 	int ret = 0;
+//	int tmp_addr;
 
 	/* check and show product ID and manufacturer ID */
 	reg16_write(client, 0xFFFD, 0x80);
@@ -416,6 +416,18 @@ static int ov495_initialize(struct i2c_client *client)
 		ret = -ENODEV;
 		goto err;
 	}
+
+#if 0
+	/* setup XCLK */
+	tmp_addr = client->addr;
+	if (priv->ti9x4_addr) {
+		/* CLK_OUT=22.5792*160*M/N/CLKDIV -> CLK_OUT=25MHz: CLKDIV=4, M=7, N=253: 22.5792*160/4*7/253=24.989MHz=CLK_OUT */
+		client->addr = priv->ti9x3_addr;			/* Serializer I2C address */
+		reg8_write(client, 0x06, 0x47);				/* Set CLKDIV and M */
+		reg8_write(client, 0x07, 0xfd);				/* Set N */
+	}
+	client->addr = tmp_addr;
+#endif
 
 	if (unlikely(force_conf_link))
 		goto out;
@@ -439,7 +451,7 @@ static int ov495_initialize(struct i2c_client *client)
 #endif
 
 	/* set virtual channel */
-	ov495_regs_wizard[3].val = 0x1e | (priv->port << 6);
+//	ov495_regs_wizard[3].val = 0x1e | (priv->port << 6);
 	/* Program wizard registers */
 	ov495_set_regs(client, ov495_regs_wizard, ARRAY_SIZE(ov495_regs_wizard));
 	/* Read OTP IDs */

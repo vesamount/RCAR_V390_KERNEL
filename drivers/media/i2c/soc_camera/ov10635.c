@@ -19,7 +19,6 @@
 #include <media/soc_camera.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
-#include <media/v4l2-fwnode.h>
 
 #include "max9286.h"
 #include "ov10635.h"
@@ -44,8 +43,7 @@ struct ov10635_priv {
 	/* serializers */
 	int				max9286_addr;
 	int				max9271_addr;
-	int				ti964_addr;
-	int				ti954_addr;
+	int				ti9x4_addr;
 	int				ti9x3_addr;
 	int				port;
 	int				gpio_resetb;
@@ -429,13 +427,11 @@ static int ov10635_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_HFLIP:
 		ret = reg16_read(client, 0x381d, &val);
-		if (ret < 0)
-			goto out;
 		if (ctrl->val)
 			val |= 0x3;
 		else
 			val &= ~0x3;
-		ret = reg16_write(client, 0x381d, val);
+		ret |= reg16_write(client, 0x381d, val);
 		break;
 	case V4L2_CID_VFLIP:
 		ret = reg16_read(client, 0x381c, &val);
@@ -443,14 +439,13 @@ static int ov10635_s_ctrl(struct v4l2_ctrl *ctrl)
 			val |= 0xc0;
 		else
 			val &= ~0xc0;
-		ret = reg16_write(client, 0x381c, val);
+		ret |= reg16_write(client, 0x381c, val);
 		break;
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
 		ret = 0;
 		break;
 	}
 
-out:
 	return ret;
 }
 
@@ -567,21 +562,15 @@ static int ov10635_parse_dt(struct device_node *np, struct ov10635_priv *priv)
 			break;
 
 		if (!of_property_read_u32(rendpoint, "ti9x3-addr", &priv->ti9x3_addr) &&
-		    !of_property_match_string(rendpoint->parent->parent, "compatible", "ti,ti964-ti9x3") &&
-		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->ti964_addr) &&
-		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
-			break;
-
-		if (!of_property_read_u32(rendpoint, "ti9x3-addr", &priv->ti9x3_addr) &&
-		    !of_property_match_string(rendpoint->parent->parent, "compatible", "ti,ti954-ti9x3") &&
-		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->ti954_addr) &&
+		    !of_property_match_string(rendpoint->parent->parent, "compatible", "ti,ti9x4") &&
+		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->ti9x4_addr) &&
 		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
 			break;
 	}
 
 	of_node_put(endpoint);
 
-	if (!priv->max9286_addr && !priv->ti964_addr && !priv->ti954_addr) {
+	if (!priv->max9286_addr && !priv->ti9x4_addr) {
 		dev_err(&client->dev, "deserializer does not present for OV10635\n");
 		return -EINVAL;
 	}
@@ -598,19 +587,8 @@ static int ov10635_parse_dt(struct device_node *np, struct ov10635_priv *priv)
 		usleep_range(2000, 2500);				/* wait 2ms */
 	};
 
-	if (priv->ti964_addr) {
-		client->addr = priv->ti964_addr;			/* Deserializer I2C address */
-
-		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
-		usleep_range(2000, 2500);				/* wait 2ms */
-		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
-		reg8_write(client, 0x5d, OV10635_I2C_ADDR << 1);	/* Sensor native I2C address */
-
-		reg8_write(client, 0x6e, 0xa9);				/* GPIO0 - resetb, GPIO1 - fsin */
-	}
-
-	if (priv->ti954_addr) {
-		client->addr = priv->ti954_addr;			/* Deserializer I2C address */
+	if (priv->ti9x4_addr) {
+		client->addr = priv->ti9x4_addr;			/* Deserializer I2C address */
 
 		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
 		usleep_range(2000, 2500);				/* wait 2ms */

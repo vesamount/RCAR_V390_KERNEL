@@ -19,7 +19,6 @@
 #include <media/soc_camera.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
-#include <media/v4l2-fwnode.h>
 
 #include "max9286.h"
 #include "ov490_ov10640.h"

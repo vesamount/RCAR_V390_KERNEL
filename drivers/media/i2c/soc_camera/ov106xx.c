@@ -13,18 +13,32 @@
 #include "ov490_ov10640.c"
 #include "ov495_ov2775.c"
 #include "ar0132.c"
+#include "ar0140.c"
+#include "ar0143.c"
 #include "ar0220.c"
+#include "ar0231.c"
+#include "ar0233.c"
 #include "ap0101_ar014x.c"
+#include "gw4200_ar014x.c"
 #include "ov2775.c"
+#include "imx390.c"
+#include "ox03a.c"
 
 static enum {
 	ID_OV10635,
 	ID_OV490_OV10640,
 	ID_OV495_OV2775,
 	ID_AR0132,
+	ID_AR0140,
+	ID_AR0143,
 	ID_AR0220,
+	ID_AR0231,
+	ID_AR0233,
 	ID_AP0101_AR014X,
+	ID_GW4200_AR014X,
 	ID_OV2775,
+	ID_IMX390,
+	ID_OX03A,
 } chip_id;
 
 static int ov106xx_probe(struct i2c_client *client,
@@ -57,9 +71,33 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
+	ret = ar0140_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0140;
+		goto out;
+	}
+
+	ret = ar0143_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0143;
+		goto out;
+	}
+
 	ret = ar0220_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0220;
+		goto out;
+	}
+
+	ret = ar0233_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0233;
+		goto out;
+	}
+
+	ret = ar0231_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0231;
 		goto out;
 	}
 
@@ -69,9 +107,27 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
+	ret = gw4200_probe(client, did);
+	if (!ret) {
+		chip_id = ID_GW4200_AR014X;
+		goto out;
+	}
+
 	ret = ov2775_probe(client, did);
 	if (!ret) {
 		chip_id = ID_OV2775;
+		goto out;
+	}
+
+	ret = imx390_probe(client, did);
+	if (!ret) {
+		chip_id = ID_IMX390;
+		goto out;
+	}
+
+	ret = ox03a_probe(client, did);
+	if (!ret) {
+		chip_id = ID_OX03A;
 		goto out;
 	}
 
@@ -96,14 +152,35 @@ static int ov106xx_remove(struct i2c_client *client)
 	case ID_AR0132:
 		ar0132_remove(client);
 		break;
+	case ID_AR0140:
+		ar0140_remove(client);
+		break;
+	case ID_AR0143:
+		ar0143_remove(client);
+		break;
 	case ID_AR0220:
 		ar0220_remove(client);
+		break;
+	case ID_AR0231:
+		ar0231_remove(client);
+		break;
+	case ID_AR0233:
+		ar0233_remove(client);
 		break;
 	case ID_AP0101_AR014X:
 		ap0101_remove(client);
 		break;
+	case ID_GW4200_AR014X:
+		gw4200_remove(client);
+		break;
 	case ID_OV2775:
 		ov2775_remove(client);
+		break;
+	case ID_IMX390:
+		imx390_remove(client);
+		break;
+	case ID_OX03A:
+		ox03a_remove(client);
 		break;
 	};
 
@@ -134,6 +211,6 @@ static struct i2c_driver ov106xx_i2c_driver = {
 
 module_i2c_driver(ov106xx_i2c_driver);
 
-MODULE_DESCRIPTION("SoC Camera driver for OV10635, OV490/OV10640, OV495/OV2775, AR0132, AR0220, AP0101/AR014X");
+MODULE_DESCRIPTION("SoC Camera driver for OV10635, OV490+OV10640, OV495+OV2775, AR0132/140/143/220/223, AP0101+AR014X");
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_LICENSE("GPL");

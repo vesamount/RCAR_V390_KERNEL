@@ -17,10 +17,9 @@
 #include <linux/of_graph.h>
 #include <linux/videodev2.h>
 
-#include <media/v4l2-async.h>
 #include <media/v4l2-common.h>
+#include <media/v4l2-clk.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
 #include "ti9x4.h"
@@ -43,7 +42,11 @@ struct ti9x4_priv {
 	int			ti9x3_addr_map[4];
 	char			chip_id[6];
 	int			ser_id;
+	int			vc_map;
+	int			csi_map;
+	struct gpio_desc	*pwen; /* chip power en */
 	struct gpio_desc	*poc_gpio[4]; /* PoC power supply */
+	struct v4l2_clk		*ref_clk; /* ref clock */
 };
 
 static int ser_id;
@@ -69,6 +72,14 @@ MODULE_PARM_DESC(vsync, " VSYNC invertion (default: 1 - inverted)");
 static int poc_delay;
 module_param(poc_delay, int, 0644);
 MODULE_PARM_DESC(poc_delay, " Delay in ms after POC enable (default: 0 ms)");
+
+static int vc_map = 0x3210;
+module_param(vc_map, int, 0644);
+MODULE_PARM_DESC(vc_map, " CSI VC MAP (default: 0xe4 - linear map VCx=LINKx)");
+
+static int csi_map = 0;
+module_param(csi_map, int, 0644);
+MODULE_PARM_DESC(csi_map, " CSI TX MAP (default: 0 - forwarding of all links to CSI0)");
 
 #ifdef TI954_SILICON_ERRATA
 static int indirect_write(struct i2c_client *client, unsigned int page, u8 reg, u8 val)
@@ -121,29 +132,35 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 	reg8_write(client, 0x0d, 0xb9);				/* VDDIO 3.3V */
 	switch (priv->csi_rate) {
 	case 1600: /* REFCLK = 25MHZ */
+	case 1500: /* REFCLK = 23MHZ */
 	case 1450: /* REFCLK = 22.5MHZ */
 		reg8_write(client, 0x1f, 0x00);			/* CSI rate 1.5/1.6Gbps */
+		break;
+	case 1200: /* REFCLK = 25MHZ */
+	case 1100: /* REFCLK = 22.5MHZ */
+		reg8_write(client, 0x1f, 0x01);			/* CSI rate 1.1/1.2Gbps */
 		break;
 	case 800: /* REFCLK = 25MHZ */
 	case 700: /* REFCLK = 22.5MHZ */
 		reg8_write(client, 0x1f, 0x02);			/* CSI rate 700/800Mbps */
 		break;
 	case 400: /* REFCLK = 25MHZ */
-		reg8_write(client, 0x1f, 0x03);			/* CSI rate 400Mbps */
+	case 350: /* REFCLK = 22.5MHZ */
+		reg8_write(client, 0x1f, 0x03);			/* CSI rate 350/400Mbps */
 		break;
 	default:
 		dev_err(&client->dev, "unsupported CSI rate %d\n", priv->csi_rate);
 	}
 
 	if (strcmp(priv->forwarding_mode, "round-robin") == 0) {
-		reg8_write(client, 0x21, 0x01);			/* Round Robin forwarding enable */
+		reg8_write(client, 0x21, 0x03);			/* Round Robin forwarding enable for CSI0/CSI1 */
 	} else if (strcmp(priv->forwarding_mode, "synchronized") == 0) {
-		reg8_write(client, 0x21, 0x44);			/* Basic Syncronized forwarding enable (FrameSync must be enabled!!) */
+		reg8_write(client, 0x21, 0x54);			/* Basic Syncronized forwarding enable (FrameSync must be enabled!!) for CSI0/CSI1 */
 	}
 
-	reg8_write(client, 0x32, 0x01);				/* Select TX (CSI) port 0 */
+	reg8_write(client, 0x32, 0x03);				/* Select TX for CSI0/CSI1, RX for CSI0 */
 	reg8_write(client, 0x33, ((priv->lanes - 1) ^ 0x3) << 4); /* disable CSI output, set CSI lane count, non-continuous CSI mode */
-	reg8_write(client, 0x20, 0xf0);				/* disable port forwarding */
+	reg8_write(client, 0x20, 0xf0 | priv->csi_map);		/* disable port forwarding */
 #if 0
 	/* FrameSync setup for REFCLK=25MHz,   FPS=30: period_counts=1/2/FPS*25MHz  =1/2/30*25Mhz  =416666 -> FS_TIME=416666 */
 	/* FrameSync setup for REFCLK=22.5MHz, FPS=30: period_counts=1/2/FPS*22.5Mhz=1/2/30*22.5Mhz=375000 -> FS_TIME=375000 */
@@ -156,12 +173,15 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 #else
 	/* FrameSync setup for REFCLK=25MHz,   FPS=30: period_counts=1/FPS/12mks=1/30/12e-6=2777 -> HI=2, LO=2775 */
 	/* FrameSync setup for REFCLK=22.5MHz, FPS=30: period_counts=1/FPS/13.333mks=1/30/13.333e-6=2500 -> HI=2, LO=2498 */
- #define FS_TIME (priv->csi_rate == 1450 ? (2498+15) : (2775+15))
+// #define FS_TIME (priv->csi_rate == 1450 ? (2498+15) : (2775+15))
+// #define FS_TIME (2498+15)
+ #define FS_TIME (2498+15)
 	reg8_write(client, 0x19, 2 >> 8);			/* FrameSync high time MSB */
 	reg8_write(client, 0x1a, 2 & 0xff);			/* FrameSync high time LSB */
 	reg8_write(client, 0x1b, FS_TIME >> 8);			/* FrameSync low time MSB */
 	reg8_write(client, 0x1c, FS_TIME & 0xff);		/* FrameSync low time LSB */
 	reg8_write(client, 0x18, 0x01);				/* Enable FrameSync, HI/LO mode, Frame clock from port0 */
+//	reg8_write(client, 0x18, 0x80);				/* Enable FrameSync, HI/LO mode, Frame clock from port0 */
 #endif
 }
 
@@ -220,10 +240,11 @@ static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 
 	reg8_write(client, 0x6d, port_config);
 	reg8_write(client, 0x7c, port_config2);
-	reg8_write(client, 0x70, (idx << 6) | 0x1e);		/* CSI data type: yuv422 8-bit, assign VC */
-	reg8_write(client, 0x71, (idx << 6) | 0x2a);		/* CSI data type: RAW8, assign VC */
+	reg8_write(client, 0x70, ((priv->vc_map >> (idx * 4)) << 6) | 0x1e); /* CSI data type: yuv422 8-bit, assign VC */
+	reg8_write(client, 0x71, ((priv->vc_map >> (idx * 4)) << 6) | 0x2c); /* CSI data type: RAW12, assign VC */
 	reg8_write(client, 0xbc, 0x00);				/* Setup minimal time between FV and LV to 3 PCLKs */
 	reg8_write(client, 0x6e, 0x88);				/* Sensor reset: backchannel GPIO0/GPIO1 set low */
+	reg8_write(client, 0x72, priv->vc_map >> (idx * 4));	/* CSI VC MAP */
 }
 
 static int ti9x4_initialize(struct i2c_client *client)
@@ -286,10 +307,10 @@ static int ti9x4_s_power(struct v4l2_subdev *sd, int on)
 
 	if (on) {
 		if (atomic_inc_return(&priv->use_count) == 1)
-			reg8_write(client, 0x20, 0x00);		/* enable port forwarding to CSI */
+			reg8_write(client, 0x20, 0x00 | priv->csi_map); /* enable port forwarding to CSI */
 	} else {
 		if (atomic_dec_return(&priv->use_count) == 0)
-			reg8_write(client, 0x20, 0xf0);		/* disable port forwarding to CSI */
+			reg8_write(client, 0x20, 0xf0 | priv->csi_map); /* disable port forwarding to CSI */
 	}
 
 	return 0;
@@ -324,7 +345,7 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	struct device_node *np = client->dev.of_node;
 	struct device_node *endpoint = NULL, *rendpoint = NULL;
 	struct property *prop;
-	int err, pwen, i;
+	int i;
 	int sensor_delay;
 	char forwarding_mode_default[20] = "round-robin"; /* round-robin, synchronized */
 	struct property *csi_rate_prop, *dvp_order_prop;
@@ -337,18 +358,22 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	if (of_property_read_u32(np, "ti,lanes", &priv->lanes))
 		priv->lanes = 4;
 
-	pwen = of_get_gpio(np, 0);
-	if (pwen > 0) {
-		err = devm_gpio_request_one(&client->dev, pwen, GPIOF_OUT_INIT_LOW, dev_name(&client->dev));
-		if (err)
-			dev_err(&client->dev, "cannot request PWEN gpio %d: %d\n", pwen, err);
-		else
-			mdelay(250);
+	priv->ref_clk = v4l2_clk_get(&client->dev, "ref_clk");
+	if (!IS_ERR(priv->ref_clk)) {
+		dev_info(&client->dev, "ref_clk = %luKHz", v4l2_clk_get_rate(priv->ref_clk) / 1000);
+		v4l2_clk_enable(priv->ref_clk);
+	}
+
+	priv->pwen = devm_gpiod_get(&client->dev, NULL, GPIOF_OUT_INIT_HIGH);
+	if (!IS_ERR(priv->pwen)) {
+		mdelay(5);
+		gpiod_direction_output(priv->pwen, 0);
+		mdelay(5);
 	}
 
 	for (i = 0; i < 4; i++) {
 		sprintf(poc_name, "POC%d", i);
-		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, poc_name, 0);
+		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, kstrdup(poc_name, GFP_KERNEL), 0);
 	}
 
 	reg8_read(client, 0x00, &val);				/* read TI9x4 I2C address */
@@ -379,13 +404,34 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	if (of_property_read_u32(np, "ti,dvp_bus", &priv->dvp_bus))
 		priv->dvp_bus = 8;
 	if (of_property_read_u32(np, "ti,hsync", &priv->hsync))
-		priv->vsync = 0;
+		priv->hsync = 0;
 	if (of_property_read_u32(np, "ti,vsync", &priv->vsync))
 		priv->vsync = 1;
 	if (of_property_read_u32(np, "ti,ser_id", &priv->ser_id))
 		priv->ser_id = TI913_ID;
 	if (of_property_read_u32(np, "ti,poc-delay", &priv->poc_delay))
 		priv->poc_delay = 50;
+	if (of_property_read_u32(np, "ti,vc-map", &priv->vc_map))
+		priv->vc_map = 0x3210;
+
+	/*
+	 * CSI forwarding of all links is to CSI0 by default.
+	 * Decide if any link will be forwarded to CSI1 instead CSI0
+	 */
+	prop = of_find_property(np, "ti,csi1-links", NULL);
+	if (prop) {
+		const __be32 *link = NULL;
+		u32 v;
+
+		for (i = 0; i < 4; i++) {
+			link = of_prop_next_u32(prop, link, &v);
+			if (!link)
+				break;
+			priv->csi_map |= BIT(v);
+		}
+	} else {
+		priv->csi_map = 0;
+	}
 
 	/* module params override dts */
 	if (is_stp)
@@ -400,6 +446,10 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 		priv->ser_id = ser_id;
 	if (poc_delay)
 		priv->poc_delay = poc_delay;
+	if (vc_map != 0x3210)
+		priv->vc_map = vc_map;
+	if (csi_map)
+		priv->csi_map = csi_map;
 
 	for (i = 0; ; i++) {
 		endpoint = of_graph_get_next_endpoint(np, endpoint);

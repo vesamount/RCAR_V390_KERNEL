@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor AP0101-AR014X sensor camera driver
+ * ON Semiconductor GW4200-AR014X sensor camera driver
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -20,24 +20,22 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "ap0101_ar014x.h"
+#include "gw4200_ar014x.h"
 
-static const int ap0101_i2c_addr[] = {0x5d, 0x48};
+#define GW4200_I2C_ADDR		0x6d
 
-#define AP0101_PID		0x0000
-#define AP0101_VERSION_REG	0x0160
+#define GW4200_PID		0x00
+#define GW4200_VERSION_REG	0xda
 
-#define AP0101_MEDIA_BUS_FMT	MEDIA_BUS_FMT_YUYV8_2X8
+#define GW4200_MEDIA_BUS_FMT	MEDIA_BUS_FMT_YUYV8_2X8
 
-static void ap0101_otp_id_read(struct i2c_client *client);
+static void gw4200_otp_id_read(struct i2c_client *client);
 
-struct ap0101_priv {
+struct gw4200_priv {
 	struct v4l2_subdev		sd;
 	struct v4l2_ctrl_handler	hdl;
 	struct media_pad		pad;
 	struct v4l2_rect		rect;
-	int				max_width;
-	int				max_height;
 	int				init_complete;
 	u8				id[6];
 	int				exposure;
@@ -49,19 +47,16 @@ struct ap0101_priv {
 	int				port;
 	int				gpio_resetb;
 	int				gpio_fsin;
-	int				hts;
-	int				vts;
-	int				frame_preamble;
 };
 
-static inline struct ap0101_priv *to_ap0101(const struct i2c_client *client)
+static inline struct gw4200_priv *to_gw4200(const struct i2c_client *client)
 {
-	return container_of(i2c_get_clientdata(client), struct ap0101_priv, sd);
+	return container_of(i2c_get_clientdata(client), struct gw4200_priv, sd);
 }
 
-static void ap0101_s_port(struct i2c_client *client, int fwd_en)
+static void gw4200_s_port(struct i2c_client *client, int fwd_en)
 {
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 	int tmp_addr;
 
 	if (priv->max9286_addr) {
@@ -73,13 +68,14 @@ static void ap0101_s_port(struct i2c_client *client, int fwd_en)
 	};
 }
 
-static int ap0101_set_regs(struct i2c_client *client,
-			  const struct ap0101_reg *regs, int nr_regs)
+#if 0
+static int gw4200_set_regs(struct i2c_client *client,
+			  const struct gw4200_reg *regs, int nr_regs)
 {
 	int i;
 
 	for (i = 0; i < nr_regs; i++) {
-		if (regs[i].reg == AP0101_DELAY) {
+		if (regs[i].reg == GW4200_DELAY) {
 			mdelay(regs[i].val);
 			continue;
 		}
@@ -89,8 +85,9 @@ static int ap0101_set_regs(struct i2c_client *client,
 
 	return 0;
 }
+#endif
 
-static u16 ap0101_ar014x_read(struct i2c_client *client, u16 addr)
+static u16 gw4200_ar014x_read(struct i2c_client *client, u16 addr)
 {
 	u16 reg_val = 0;
 
@@ -109,7 +106,7 @@ static u16 ap0101_ar014x_read(struct i2c_client *client, u16 addr)
 	return reg_val;
 }
 
-static void ap0101_ar014x_write(struct i2c_client *client, u16 addr, u16 val)
+static void gw4200_ar014x_write(struct i2c_client *client, u16 addr, u16 val)
 {
 	reg16_write16(client, 0x0040, 0x8d00);
 	usleep_range(100, 150); /* wait 100 us */
@@ -124,38 +121,38 @@ static void ap0101_ar014x_write(struct i2c_client *client, u16 addr, u16 val)
 	usleep_range(100, 150); /* wait 100 us */
 }
 
-static int ap0101_s_stream(struct v4l2_subdev *sd, int enable)
+static int gw4200_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	return 0;
 }
 
-static int ap0101_get_fmt(struct v4l2_subdev *sd,
+static int gw4200_get_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
 			 struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *mf = &format->format;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 
 	if (format->pad)
 		return -EINVAL;
 
 	mf->width = priv->rect.width;
 	mf->height = priv->rect.height;
-	mf->code = AP0101_MEDIA_BUS_FMT;
+	mf->code = GW4200_MEDIA_BUS_FMT;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
 	return 0;
 }
 
-static int ap0101_set_fmt(struct v4l2_subdev *sd,
+static int gw4200_set_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
 			 struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *mf = &format->format;
 
-	mf->code = AP0101_MEDIA_BUS_FMT;
+	mf->code = GW4200_MEDIA_BUS_FMT;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
@@ -165,42 +162,42 @@ static int ap0101_set_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int ap0101_enum_mbus_code(struct v4l2_subdev *sd,
+static int gw4200_enum_mbus_code(struct v4l2_subdev *sd,
 				struct v4l2_subdev_pad_config *cfg,
 				struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->pad || code->index > 0)
 		return -EINVAL;
 
-	code->code = AP0101_MEDIA_BUS_FMT;
+	code->code = GW4200_MEDIA_BUS_FMT;
 
 	return 0;
 }
 
-static int ap0101_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+static int gw4200_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 
-	ap0101_otp_id_read(client);
+	gw4200_otp_id_read(client);
 
 	memcpy(edid->edid, priv->id, 6);
 
 	edid->edid[6] = 0xff;
 	edid->edid[7] = client->addr;
-	edid->edid[8] = AP0101_VERSION_REG >> 8;
-	edid->edid[9] = AP0101_VERSION_REG & 0xff;
+	edid->edid[8] = GW4200_VERSION_REG >> 8;
+	edid->edid[9] = GW4200_VERSION_REG & 0xff;
 
 	return 0;
 }
 
-static int ap0101_set_selection(struct v4l2_subdev *sd,
+static int gw4200_set_selection(struct v4l2_subdev *sd,
 			       struct v4l2_subdev_pad_config *cfg,
 			       struct v4l2_subdev_selection *sel)
 {
 	struct v4l2_rect *rect = &sel->r;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 
 	if (sel->which != V4L2_SUBDEV_FORMAT_ACTIVE ||
 	    sel->target != V4L2_SEL_TGT_CROP)
@@ -211,8 +208,8 @@ static int ap0101_set_selection(struct v4l2_subdev *sd,
 	rect->width = ALIGN(rect->width, 2);
 	rect->height = ALIGN(rect->height, 2);
 
-	if ((rect->left + rect->width > priv->max_width) ||
-	    (rect->top + rect->height > priv->max_height))
+	if ((rect->left + rect->width > GW4200_MAX_WIDTH) ||
+	    (rect->top + rect->height > GW4200_MAX_HEIGHT))
 		*rect = priv->rect;
 
 	priv->rect.left = rect->left;
@@ -223,12 +220,12 @@ static int ap0101_set_selection(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int ap0101_get_selection(struct v4l2_subdev *sd,
+static int gw4200_get_selection(struct v4l2_subdev *sd,
 			       struct v4l2_subdev_pad_config *cfg,
 			       struct v4l2_subdev_selection *sel)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 
 	if (sel->which != V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EINVAL;
@@ -237,14 +234,14 @@ static int ap0101_get_selection(struct v4l2_subdev *sd,
 	case V4L2_SEL_TGT_CROP_BOUNDS:
 		sel->r.left = 0;
 		sel->r.top = 0;
-		sel->r.width = priv->max_width;
-		sel->r.height = priv->max_height;
+		sel->r.width = GW4200_MAX_WIDTH;
+		sel->r.height = GW4200_MAX_HEIGHT;
 		return 0;
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 		sel->r.left = 0;
 		sel->r.top = 0;
-		sel->r.width = priv->max_width;
-		sel->r.height = priv->max_height;
+		sel->r.width = GW4200_MAX_WIDTH;
+		sel->r.height = GW4200_MAX_HEIGHT;
 		return 0;
 	case V4L2_SEL_TGT_CROP:
 		sel->r = priv->rect;
@@ -254,7 +251,7 @@ static int ap0101_get_selection(struct v4l2_subdev *sd,
 	}
 }
 
-static int ap0101_g_mbus_config(struct v4l2_subdev *sd,
+static int gw4200_g_mbus_config(struct v4l2_subdev *sd,
 			       struct v4l2_mbus_config *cfg)
 {
 	cfg->flags = V4L2_MBUS_CSI2_1_LANE | V4L2_MBUS_CSI2_CHANNEL_0 |
@@ -265,7 +262,7 @@ static int ap0101_g_mbus_config(struct v4l2_subdev *sd,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int ap0101_g_register(struct v4l2_subdev *sd,
+static int gw4200_g_register(struct v4l2_subdev *sd,
 			    struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
@@ -282,7 +279,7 @@ static int ap0101_g_register(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int ap0101_s_register(struct v4l2_subdev *sd,
+static int gw4200_s_register(struct v4l2_subdev *sd,
 			    const struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
@@ -291,18 +288,18 @@ static int ap0101_s_register(struct v4l2_subdev *sd,
 }
 #endif
 
-static struct v4l2_subdev_core_ops ap0101_core_ops = {
+static struct v4l2_subdev_core_ops gw4200_core_ops = {
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-	.g_register = ap0101_g_register,
-	.s_register = ap0101_s_register,
+	.g_register = gw4200_g_register,
+	.s_register = gw4200_s_register,
 #endif
 };
 
-static int ap0101_s_ctrl(struct v4l2_ctrl *ctrl)
+static int gw4200_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct v4l2_subdev *sd = to_sd(ctrl);
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 	int ret = -EINVAL;
 
 	if (!priv->init_complete)
@@ -326,139 +323,95 @@ static int ap0101_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static const struct v4l2_ctrl_ops ap0101_ctrl_ops = {
-	.s_ctrl = ap0101_s_ctrl,
+static const struct v4l2_ctrl_ops gw4200_ctrl_ops = {
+	.s_ctrl = gw4200_s_ctrl,
 };
 
-static struct v4l2_subdev_video_ops ap0101_video_ops = {
-	.s_stream	= ap0101_s_stream,
-	.g_mbus_config	= ap0101_g_mbus_config,
+static struct v4l2_subdev_video_ops gw4200_video_ops = {
+	.s_stream	= gw4200_s_stream,
+	.g_mbus_config	= gw4200_g_mbus_config,
 };
 
-static const struct v4l2_subdev_pad_ops ap0101_subdev_pad_ops = {
-	.get_edid	= ap0101_get_edid,
-	.enum_mbus_code	= ap0101_enum_mbus_code,
-	.get_selection	= ap0101_get_selection,
-	.set_selection	= ap0101_set_selection,
-	.get_fmt	= ap0101_get_fmt,
-	.set_fmt	= ap0101_set_fmt,
+static const struct v4l2_subdev_pad_ops gw4200_subdev_pad_ops = {
+	.get_edid	= gw4200_get_edid,
+	.enum_mbus_code	= gw4200_enum_mbus_code,
+	.get_selection	= gw4200_get_selection,
+	.set_selection	= gw4200_set_selection,
+	.get_fmt	= gw4200_get_fmt,
+	.set_fmt	= gw4200_set_fmt,
 };
 
-static struct v4l2_subdev_ops ap0101_subdev_ops = {
-	.core	= &ap0101_core_ops,
-	.video	= &ap0101_video_ops,
-	.pad	= &ap0101_subdev_pad_ops,
+static struct v4l2_subdev_ops gw4200_subdev_ops = {
+	.core	= &gw4200_core_ops,
+	.video	= &gw4200_video_ops,
+	.pad	= &gw4200_subdev_pad_ops,
 };
 
-static void ap0101_otp_id_read(struct i2c_client *client)
+static void gw4200_otp_id_read(struct i2c_client *client)
 {
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 	int i;
 
 	/* read camera id from ar014x OTP memory */
-	ap0101_ar014x_write(client, 0x3054, 0x400);
-	ap0101_ar014x_write(client, 0x304a, 0x110);
+	gw4200_ar014x_write(client, 0x3054, 0x400);
+	gw4200_ar014x_write(client, 0x304a, 0x110);
 	usleep_range(25000, 25500); /* wait 25 ms */
 
 	for (i = 0; i < 6; i += 2) {
 		/* first 4 bytes are equal on all ar014x */
-		priv->id[i]     = ap0101_ar014x_read(client, 0x3800 + i + 4) >> 8;
-		priv->id[i + 1] = ap0101_ar014x_read(client, 0x3800 + i + 4) & 0xff;
+		priv->id[i]     = gw4200_ar014x_read(client, 0x3800 + i + 4) >> 8;
+		priv->id[i + 1] = gw4200_ar014x_read(client, 0x3800 + i + 4) & 0xff;
 	}
 }
 
-static ssize_t ap0101_otp_id_show(struct device *dev,
+static ssize_t gw4200_otp_id_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(to_i2c_client(dev));
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ap0101_priv *priv = to_ap0101(client);
+	struct gw4200_priv *priv = to_gw4200(client);
 
-	ap0101_otp_id_read(client);
+	gw4200_otp_id_read(client);
 
 	return snprintf(buf, 32, "%02x:%02x:%02x:%02x:%02x:%02x\n",
 			priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 }
 
-static DEVICE_ATTR(otp_id_ap0101, S_IRUGO, ap0101_otp_id_show, NULL);
+static DEVICE_ATTR(otp_id_gw4200, S_IRUGO, gw4200_otp_id_show, NULL);
 
-static int ap0101_initialize(struct i2c_client *client)
+static int gw4200_initialize(struct i2c_client *client)
 {
-	struct ap0101_priv *priv = to_ap0101(client);
-	u16 pid = 0, val = 0;
+	struct gw4200_priv *priv = to_gw4200(client);
+	u8 pid = 0;
 	int ret = 0;
-	int tmp_addr;
-	int i;
 
-	ap0101_s_port(client, 1);
-
-	for (i = 0; i < ARRAY_SIZE(ap0101_i2c_addr); i++) {
-		tmp_addr = client->addr;
-		if (priv->max9286_addr) {
-			client->addr = priv->max9271_addr;			/* Serializer I2C address */
-			reg8_write(client, 0x0A, ap0101_i2c_addr[i] << 1);	/* Sensor native I2C address */
-			usleep_range(2000, 2500);				/* wait 2ms */
-		};
-		client->addr = tmp_addr;
-
-		/* check model ID */
-		reg16_read16(client, AP0101_PID, &pid);
-
-		if (pid == AP0101_VERSION_REG)
-			break;
-	}
+	gw4200_s_port(client, 1);
 
 	/* check and show model ID */
-	reg16_read16(client, AP0101_PID, &pid);
+	reg8_read(client, GW4200_PID, &pid);
 
-	if (pid != AP0101_VERSION_REG) {
-		dev_dbg(&client->dev, "Product ID error %x\n", pid);
+	if (pid != GW4200_VERSION_REG) {
+		dev_err(&client->dev, "Product ID error %x\n", pid);
 		ret = -ENODEV;
 		goto err;
 	}
-#if 1
-	/* read resolution used by current firmware */
-	reg16_read16(client, 0xca90, &val);
-	priv->max_width = val;
-	reg16_read16(client, 0xca92, &val);
-	priv->max_height = val;
-#else
-	priv->max_width = AP0101_MAX_WIDTH;
-	priv->max_height = AP0101_MAX_HEIGHT;
-#endif
+
+#if 0
 	/* Program wizard registers */
-	ap0101_set_regs(client, ap0101_regs_wizard, ARRAY_SIZE(ap0101_regs_wizard));
+	gw4200_set_regs(client, gw4200_regs_wizard, ARRAY_SIZE(gw4200_regs_wizard));
 	/* Read OTP IDs */
-	ap0101_otp_id_read(client);
+	gw4200_otp_id_read(client);
+#endif
 
-	tmp_addr = client->addr;
-	if (priv->max9271_addr) {
-		/* setup serializer HS generator */
-		client->addr = priv->max9271_addr;			/* Serializer I2C address */
-		priv->frame_preamble = 5;
-		priv->hts = 1280 * 2 + 548;
-		priv->vts = 960;
-		reg8_write(client, 0x4e, priv->frame_preamble >> 16);	/* HS delay */
-		reg8_write(client, 0x4f, (priv->frame_preamble >> 8) & 0xff);
-		reg8_write(client, 0x50, priv->frame_preamble & 0xff);
-		reg8_write(client, 0x54, (priv->max_width * 2) >> 8);	/* HS high period */
-		reg8_write(client, 0x55, (priv->max_width * 2) & 0xff);
-		reg8_write(client, 0x56, (priv->hts - priv->max_width * 2) >> 8); /* HS low period */
-		reg8_write(client, 0x57, (priv->hts - priv->max_width * 2) & 0xff);
-		reg8_write(client, 0x58, priv->vts >> 8);		/* HS count */
-		reg8_write(client, 0x59, priv->vts & 0xff);
-	}
-	client->addr = tmp_addr;
-
-	dev_info(&client->dev, "ap0101 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, priv->max_width, priv->max_height, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "gw4200 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, GW4200_MAX_WIDTH, GW4200_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
-	ap0101_s_port(client, 0);
+	gw4200_s_port(client, 0);
 
 	return ret;
 }
 
-static int ap0101_parse_dt(struct device_node *np, struct ap0101_priv *priv)
+static int gw4200_parse_dt(struct device_node *np, struct gw4200_priv *priv)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&priv->sd);
 	int i;
@@ -483,17 +436,19 @@ static int ap0101_parse_dt(struct device_node *np, struct ap0101_priv *priv)
 	of_node_put(endpoint);
 
 	if (!priv->max9286_addr) {
-		dev_err(&client->dev, "deserializer does not present for AP0101\n");
+		dev_err(&client->dev, "deserializer does not present for GW4200\n");
 		return -EINVAL;
 	}
 
-	ap0101_s_port(client, 1);
+	gw4200_s_port(client, 1);
 
 	/* setup I2C translator address */
 	tmp_addr = client->addr;
 	if (priv->max9286_addr) {
 		client->addr = priv->max9271_addr;			/* Serializer I2C address */
+
 		reg8_write(client, 0x09, tmp_addr << 1);		/* Sensor translated I2C address */
+		reg8_write(client, 0x0A, GW4200_I2C_ADDR << 1);		/* Sensor native I2C address */
 		usleep_range(2000, 2500);				/* wait 2ms */
 	};
 	client->addr = tmp_addr;
@@ -503,44 +458,44 @@ static int ap0101_parse_dt(struct device_node *np, struct ap0101_priv *priv)
 	return 0;
 }
 
-static int ap0101_probe(struct i2c_client *client,
+static int gw4200_probe(struct i2c_client *client,
 		       const struct i2c_device_id *did)
 {
-	struct ap0101_priv *priv;
+	struct gw4200_priv *priv;
 	int ret;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	v4l2_i2c_subdev_init(&priv->sd, client, &ap0101_subdev_ops);
+	v4l2_i2c_subdev_init(&priv->sd, client, &gw4200_subdev_ops);
 	priv->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	priv->exposure = 0x100;
 	priv->gain = 0x100;
 	priv->autogain = 1;
 	v4l2_ctrl_handler_init(&priv->hdl, 4);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_BRIGHTNESS, 0, 16, 1, 7);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_CONTRAST, 0, 16, 1, 7);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_SATURATION, 0, 7, 1, 2);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_HUE, 0, 23, 1, 12);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_GAMMA, -128, 128, 1, 0);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_SHARPNESS, 0, 10, 1, 3);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_AUTOGAIN, 0, 1, 1, priv->autogain);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_GAIN, 0, 0xffff, 1, priv->gain);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_EXPOSURE, 0, 0xffff, 1, priv->exposure);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 1);
-	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &gw4200_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	priv->sd.ctrl_handler = &priv->hdl;
 
@@ -556,24 +511,24 @@ static int ap0101_probe(struct i2c_client *client,
 	if (ret < 0)
 		goto cleanup;
 
-	ret = ap0101_parse_dt(client->dev.of_node, priv);
+	ret = gw4200_parse_dt(client->dev.of_node, priv);
 	if (ret)
 		goto cleanup;
 
-	ret = ap0101_initialize(client);
+	ret = gw4200_initialize(client);
 	if (ret < 0)
 		goto cleanup;
 
 	priv->rect.left = 0;
 	priv->rect.top = 0;
-	priv->rect.width = priv->max_width;
-	priv->rect.height = priv->max_height;
+	priv->rect.width = GW4200_MAX_WIDTH;
+	priv->rect.height = GW4200_MAX_HEIGHT;
 
 	ret = v4l2_async_register_subdev(&priv->sd);
 	if (ret)
 		goto cleanup;
 
-	if (device_create_file(&client->dev, &dev_attr_otp_id_ap0101) != 0) {
+	if (device_create_file(&client->dev, &dev_attr_otp_id_gw4200) != 0) {
 		dev_err(&client->dev, "sysfs otp_id entry creation failed\n");
 		goto cleanup;
 	}
@@ -586,18 +541,18 @@ cleanup:
 	media_entity_cleanup(&priv->sd.entity);
 	v4l2_ctrl_handler_free(&priv->hdl);
 	v4l2_device_unregister_subdev(&priv->sd);
-#ifdef CONFIG_SOC_CAMERA_AP0101
+#ifdef CONFIG_SOC_CAMERA_GW4200
 	v4l_err(client, "failed to probe @ 0x%02x (%s)\n",
 		client->addr, client->adapter->name);
 #endif
 	return ret;
 }
 
-static int ap0101_remove(struct i2c_client *client)
+static int gw4200_remove(struct i2c_client *client)
 {
-	struct ap0101_priv *priv = i2c_get_clientdata(client);
+	struct gw4200_priv *priv = i2c_get_clientdata(client);
 
-	device_remove_file(&client->dev, &dev_attr_otp_id_ap0101);
+	device_remove_file(&client->dev, &dev_attr_otp_id_gw4200);
 	v4l2_async_unregister_subdev(&priv->sd);
 	media_entity_cleanup(&priv->sd.entity);
 	v4l2_ctrl_handler_free(&priv->hdl);
@@ -606,32 +561,32 @@ static int ap0101_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_SOC_CAMERA_AP0101
-static const struct i2c_device_id ap0101_id[] = {
-	{ "ap0101", 0 },
+#ifdef CONFIG_SOC_CAMERA_GW4200
+static const struct i2c_device_id gw4200_id[] = {
+	{ "gw4200", 0 },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, ap0101_id);
+MODULE_DEVICE_TABLE(i2c, gw4200_id);
 
-static const struct of_device_id ap0101_of_ids[] = {
-	{ .compatible = "aptina,ap0101", },
+static const struct of_device_id gw4200_of_ids[] = {
+	{ .compatible = "aptina,gw4200", },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, ap0101_of_ids);
+MODULE_DEVICE_TABLE(of, gw4200_of_ids);
 
-static struct i2c_driver ap0101_i2c_driver = {
+static struct i2c_driver gw4200_i2c_driver = {
 	.driver	= {
-		.name		= "ap0101",
-		.of_match_table	= ap0101_of_ids,
+		.name		= "gw4200",
+		.of_match_table	= gw4200_of_ids,
 	},
-	.probe		= ap0101_probe,
-	.remove		= ap0101_remove,
-	.id_table	= ap0101_id,
+	.probe		= gw4200_probe,
+	.remove		= gw4200_remove,
+	.id_table	= gw4200_id,
 };
 
-module_i2c_driver(ap0101_i2c_driver);
+module_i2c_driver(gw4200_i2c_driver);
 
-MODULE_DESCRIPTION("SoC Camera driver for AP0101");
+MODULE_DESCRIPTION("SoC Camera driver for GW4200");
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_LICENSE("GPL");
 #endif
