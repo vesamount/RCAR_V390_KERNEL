@@ -123,6 +123,7 @@ static void ti9x4_read_chipid(struct i2c_client *client)
 static void ti9x4_initial_setup(struct i2c_client *client)
 {
 	struct ti9x4_priv *priv = i2c_get_clientdata(client);
+	int fs_time = 0;
 
 	/* Initial setup */
 	client->addr = priv->des_addr;				/* TI9x4 I2C */
@@ -132,7 +133,7 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 	reg8_write(client, 0x0d, 0xb9);				/* VDDIO 3.3V */
 	switch (priv->csi_rate) {
 	case 1600: /* REFCLK = 25MHZ */
-	case 1500: /* REFCLK = 23MHZ */
+	case 1500: /* REFCLK = 23.5MHZ */
 	case 1450: /* REFCLK = 22.5MHZ */
 		reg8_write(client, 0x1f, 0x00);			/* CSI rate 1.5/1.6Gbps */
 		break;
@@ -147,6 +148,29 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 	case 400: /* REFCLK = 25MHZ */
 	case 350: /* REFCLK = 22.5MHZ */
 		reg8_write(client, 0x1f, 0x03);			/* CSI rate 350/400Mbps */
+		break;
+	default:
+		dev_err(&client->dev, "unsupported CSI rate %d\n", priv->csi_rate);
+	}
+
+	switch (priv->csi_rate) {
+	case 1600:
+	case 1200:
+	case 800:
+	case 400:
+		/* FrameSync setup for REFCLK=25MHz,   FPS=30: period_counts=1/FPS/12mks=1/30/12e-6=2777 -> HI=2, LO=2775 */
+		fs_time = 2790;
+		break;
+	case 1500:
+		/* FrameSync setup for REFCLK=23.5MHz, FPS=30: period_counts=1/FPS/12.766mks=1/30/12.766e-6=2612 -> HI=2, LO=2610 */
+		fs_time = 2625;
+		break;
+	case 1450:
+	case 1100:
+	case 700:
+	case 350:
+		/* FrameSync setup for REFCLK=22.5MHz, FPS=30: period_counts=1/FPS/13.333mks=1/30/13.333e-6=2500 -> HI=2, LO=2498 */
+		fs_time = 2513;
 		break;
 	default:
 		dev_err(&client->dev, "unsupported CSI rate %d\n", priv->csi_rate);
@@ -171,15 +195,10 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 	reg8_write(client, 0x1c, FS_TIME & 0xff);
 	reg8_write(client, 0x18, 0x43);				/* Enable FrameSync, 50/50 mode, Frame clock from 25MHz */
 #else
-	/* FrameSync setup for REFCLK=25MHz,   FPS=30: period_counts=1/FPS/12mks=1/30/12e-6=2777 -> HI=2, LO=2775 */
-	/* FrameSync setup for REFCLK=22.5MHz, FPS=30: period_counts=1/FPS/13.333mks=1/30/13.333e-6=2500 -> HI=2, LO=2498 */
-// #define FS_TIME (priv->csi_rate == 1450 ? (2498+15) : (2775+15))
-// #define FS_TIME (2498+15)
- #define FS_TIME (2498+15)
 	reg8_write(client, 0x19, 2 >> 8);			/* FrameSync high time MSB */
 	reg8_write(client, 0x1a, 2 & 0xff);			/* FrameSync high time LSB */
-	reg8_write(client, 0x1b, FS_TIME >> 8);			/* FrameSync low time MSB */
-	reg8_write(client, 0x1c, FS_TIME & 0xff);		/* FrameSync low time LSB */
+	reg8_write(client, 0x1b, fs_time >> 8);			/* FrameSync low time MSB */
+	reg8_write(client, 0x1c, fs_time & 0xff);		/* FrameSync low time LSB */
 	reg8_write(client, 0x18, 0x01);				/* Enable FrameSync, HI/LO mode, Frame clock from port0 */
 //	reg8_write(client, 0x18, 0x80);				/* Enable FrameSync, HI/LO mode, Frame clock from port0 */
 #endif
