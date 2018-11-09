@@ -16,11 +16,11 @@
 		serial3 = &hscif1;
 	};
 
-	snd_clk: snd_clk {
-		compatible = "fixed-clock";
+	pcm3168a_clk: pcm3168a_clk {
+		compatible = "gpio-mux-clock";
+		clocks = <&cs2000>, <&audio_clk_a>;
 		#clock-cells = <0>;
-		clock-frequency = <24576000>;
-		clock-output-names = "scki";
+		select-gpios = <&gpio_exp_75 13 GPIO_ACTIVE_HIGH>;
 	};
 
 	wlan_en: regulator@4 {
@@ -55,15 +55,10 @@
 
 	codec_en_reg: regulator@6 {
 		compatible = "regulator-fixed";
-		regulator-name = "codec-en-regulator";
+
+		regulator-name = "PCM3168A Vcc Vdd";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-
-		gpio = <&gpio_exp_74 15 0>;
-
-		/* delay - CHECK */
-		startup-delay-us = <70000>;
-		enable-active-high;
 	};
 
 	amp_en_reg: regulator@7 {
@@ -451,6 +446,12 @@
 			output-high;
 			line-name = "OTG EXTLPn";
 		};
+		snd_rst {
+			gpio-hog;
+			gpios = <15 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "pcm3168a reset";
+		};
 	};
 
 	gpio_exp_75: gpio@75 {
@@ -482,6 +483,7 @@
 		#size-cells = <0>;
 		reg = <0x71>;
 		reset-gpios = <&gpio5 3 GPIO_ACTIVE_LOW>;
+		i2c-mux-idle-disconnect;
 
 		i2c@0 {
 			#address-cells = <1>;
@@ -586,7 +588,7 @@
 				#sound-dai-cells = <0>;
 				compatible = "ti,pcm3168a";
 				reg = <0x44>;
-				clocks = <&snd_clk>;
+				clocks = <&pcm3168a_clk>;
 				clock-names = "scki";
 				tdm;
 				VDD1-supply = <&codec_en_reg>;
