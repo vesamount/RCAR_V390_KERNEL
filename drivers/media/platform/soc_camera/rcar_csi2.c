@@ -40,8 +40,6 @@
 
 #include <media/v4l2-fwnode.h>
 
-//#define RCAR_CSI2_DUMP
-
 #define DRV_NAME "rcar_csi2"
 #define VC_MAX_CHANNEL		4
 
@@ -232,6 +230,10 @@ struct rcar_csi2 {
 	atomic_t			use_count;
 };
 
+static int dump = 0;
+module_param(dump, int, 0644);
+MODULE_PARM_DESC(dump, " Dump CSI packets (default: disabled)");
+
 #define RCAR_CSI_80MBPS		0
 #define RCAR_CSI_90MBPS		1
 #define RCAR_CSI_100MBPS	2
@@ -295,13 +297,15 @@ struct rcar_csi2 {
 
 #define RCAR_CSI2_INTSTATE_ALL		0x3FFFFCDD
 
-#ifdef RCAR_CSI2_DUMP
 static void rcar_sci2_debug_show(struct rcar_csi2 *priv)
 {
 	int i;
 	u32 reg0, reg1;
 
-	printk("Debug registers:\n");
+	if (!dump)
+		return;
+
+	dev_info(&priv->pdev->dev, "Debug registers:\n");
 	printk("FCNTM : 0x%08x\n", ioread32(priv->base + RCAR_CSI2_FCNTM));
 	printk("FCNTM2: 0x%08x\n", ioread32(priv->base + RCAR_CSI2_FCNTM2));
 
@@ -355,9 +359,6 @@ static void rcar_sci2_debug_show(struct rcar_csi2 *priv)
 	for (i = 0; i < 2; i++)
 		printk("LCNTM%d: 0x%08x\n", i, ioread32(priv->base + RCAR_CSI2_LCNTM(i)));
 }
-#else
-#define rcar_sci2_debug_show(args)
-#endif /* RCAR_CSI2_DUMP */
 
 static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 {
