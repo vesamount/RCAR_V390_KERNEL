@@ -18,6 +18,7 @@
 #include "ar0220.c"
 #include "ar0231.c"
 #include "ar0233.c"
+#include "ar0323.c"
 #include "ap0101_ar014x.c"
 #include "gw4200_ar014x.c"
 #include "ov2775.c"
@@ -34,6 +35,7 @@ static enum {
 	ID_AR0220,
 	ID_AR0231,
 	ID_AR0233,
+	ID_AR0323,
 	ID_AP0101_AR014X,
 	ID_GW4200_AR014X,
 	ID_OV2775,
@@ -92,6 +94,12 @@ static int ov106xx_probe(struct i2c_client *client,
 	ret = ar0233_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0233;
+		goto out;
+	}
+
+	ret = ar0323_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0323;
 		goto out;
 	}
 
@@ -167,6 +175,9 @@ static int ov106xx_remove(struct i2c_client *client)
 	case ID_AR0233:
 		ar0233_remove(client);
 		break;
+	case ID_AR0323:
+		ar0323_remove(client);
+		break;
 	case ID_AP0101_AR014X:
 		ap0101_remove(client);
 		break;
@@ -211,6 +222,6 @@ static struct i2c_driver ov106xx_i2c_driver = {
 
 module_i2c_driver(ov106xx_i2c_driver);
 
-MODULE_DESCRIPTION("SoC Camera driver for OV10635, OV490+OV10640, OV495+OV2775, AR0132/140/143/220/223, AP0101+AR014X");
+MODULE_DESCRIPTION("SoC Camera driver for OV10635, OV490+OV10640, OV495+OV2775, AR0132/140/143/220/223/323, AP0101+AR014X");
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_LICENSE("GPL");
