@@ -208,7 +208,7 @@ struct drm_gem_object *rcar_du_gem_prime_import_sg_table(struct drm_device *dev,
 		goto error;
 	}
 
-	cma_obj->paddr = 0;
+	cma_obj->paddr = sg_dma_address(sgt->sgl);
 	cma_obj->sgt = sgt;
 
 	return gem_obj;
