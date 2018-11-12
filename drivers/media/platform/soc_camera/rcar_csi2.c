@@ -87,7 +87,7 @@
 
 #define RCAR_CSI2_VCDT_VCDTN_EN			(1 << 15)
 #define RCAR_CSI2_VCDT_SEL_VCN			(1 << 8)
-#define RCAR_CSI2_VCDT_SEL_DTN_ON		(1 << 6)
+#define RCAR_CSI2_VCDT_SEL_DTN_ON		(0 << 6)
 #define RCAR_CSI2_VCDT_SEL_DTN			(1 << 0)
 
 #define RCAR_CSI2_LINKCNT_MONITOR_EN		(1 << 31)
@@ -682,30 +682,12 @@ static int rcar_csi2_parse_dt(struct device_node *np,
 			return ret;
 
 		if (i < 2) {
-			if (!strcmp(str, "rgb888"))
-				config->vcdt |= (0x24 << (i * 16));
-			else if (!strcmp(str, "ycbcr422"))
-				config->vcdt |= (0x1e << (i * 16));
-			else if (!strcmp(str, "raw8"))
-				config->vcdt |= (0x2a << (i * 16));
-			else
-				config->vcdt |= 0;
-
 			config->vcdt |= (ch << (8 + (i * 16)));
 			config->vcdt |= (RCAR_CSI2_VCDT_VCDTN_EN << (i * 16)) |
 					(RCAR_CSI2_VCDT_SEL_DTN_ON << (i * 16));
 		}
 		if (i >= 2) {
 			int j = (i - 2);
-
-			if (!strcmp(str, "rgb888"))
-				config->vcdt2 |= (0x24 << (j * 16));
-			else if (!strcmp(str, "ycbcr422"))
-				config->vcdt2 |= (0x1e << (j * 16));
-			else if (!strcmp(str, "raw8"))
-				config->vcdt2 |= (0x2a << (j * 16));
-			else
-				config->vcdt2 |= 0;
 
 			config->vcdt2 |= (ch << (8 + (j * 16)));
 			config->vcdt2 |= (RCAR_CSI2_VCDT_VCDTN_EN << (j * 16)) |
