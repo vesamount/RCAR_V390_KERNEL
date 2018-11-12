@@ -1056,6 +1056,32 @@ static int soc_camera_g_edid(struct file *file, void *fh,
 	return -ENOIOCTLCMD;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int soc_camera_g_register(struct file *file, void *priv,
+				 struct v4l2_dbg_register *reg)
+{
+	struct soc_camera_device *icd = file->private_data;
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
+
+	if (ici->ops->get_register)
+		return ici->ops->get_register(icd, reg);
+
+	return -ENOIOCTLCMD;
+}
+
+static int soc_camera_s_register(struct file *file, void *priv,
+				 const struct v4l2_dbg_register *reg)
+{
+	struct soc_camera_device *icd = file->private_data;
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
+
+	if (ici->ops->set_register)
+		return ici->ops->set_register(icd, reg);
+
+	return -ENOIOCTLCMD;
+}
+#endif
+
 static int soc_camera_probe(struct soc_camera_host *ici,
 			    struct soc_camera_device *icd);
 
@@ -2040,6 +2066,10 @@ static const struct v4l2_ioctl_ops soc_camera_ioctl_ops = {
 	.vidioc_g_parm		 = soc_camera_g_parm,
 	.vidioc_s_parm		 = soc_camera_s_parm,
 	.vidioc_g_edid		 = soc_camera_g_edid,
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.vidioc_g_register	= soc_camera_g_register,
+	.vidioc_s_register	= soc_camera_s_register,
+#endif
 };
 
 static int video_dev_create(struct soc_camera_device *icd)
