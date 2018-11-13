@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+//#define DEBUG
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
@@ -199,7 +200,14 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 
 		format.format.width = cfg->width;
 		format.format.height = cfg->height;
+#if 0
 		format.format.code = MEDIA_BUS_FMT_ARGB8888_1X32;
+#else
+		/* ...always blend in YUV colorspace;
+		 * apply conversion as needed
+		 */
+		format.format.code = MEDIA_BUS_FMT_AYUV8_1X32;
+#endif
 		format.format.field = V4L2_FIELD_NONE;
 
 		ret = v4l2_subdev_call(&pipe->bru->subdev, pad,
@@ -215,7 +223,12 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 	format.pad = pipe->bru->source_pad;
 	format.format.width = cfg->width;
 	format.format.height = cfg->height;
+#if 0
 	format.format.code = MEDIA_BUS_FMT_ARGB8888_1X32;
+#else
+	/* ...always blend in YUV colorspace; apply conversion as needed */
+	format.format.code = MEDIA_BUS_FMT_AYUV8_1X32;
+#endif
 	format.format.field = V4L2_FIELD_NONE;
 
 	ret = v4l2_subdev_call(&pipe->bru->subdev, pad, set_fmt, NULL,
@@ -238,6 +251,13 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 		format.format.code, pipe->output->entity.index);
 
 	format.pad = RWPF_PAD_SOURCE;
+	/* ...force conversion back to ARGB at the output */
+	format.format.code = MEDIA_BUS_FMT_ARGB8888_1X32;
+	ret = v4l2_subdev_call(&pipe->output->entity.subdev, pad, set_fmt, NULL,
+			       &format);
+	if (ret < 0)
+		return ret;
+
 	ret = v4l2_subdev_call(&pipe->output->entity.subdev, pad, get_fmt, NULL,
 			       &format);
 	if (ret < 0)
@@ -376,12 +396,14 @@ int vsp1_du_atomic_update(struct device *dev, unsigned int pipe_index,
 	}
 
 	dev_dbg(vsp1->dev,
-		"%s: RPF%u: (%u,%u)/%ux%u -> (%u,%u)/%ux%u (%08x), pitch %u dma { %pad, %pad, %pad } zpos %u\n",
+		"%s: RPF%u: (%u,%u)/%ux%u -> (%u,%u)/%ux%u (%08x), pitch %u "
+		"dma { %pad, %pad, %pad } zpos %u, alpha %pad, ckey %x/%x/%x\n",
 		__func__, rpf_index,
 		cfg->src.left, cfg->src.top, cfg->src.width, cfg->src.height,
 		cfg->dst.left, cfg->dst.top, cfg->dst.width, cfg->dst.height,
 		cfg->pixelformat, cfg->pitch, &cfg->mem[0], &cfg->mem[1],
-		&cfg->mem[2], cfg->zpos);
+		&cfg->mem[2], cfg->zpos, &cfg->alpha_mem, cfg->ckey,
+		cfg->ckey_set0, cfg->ckey_set1);
 
 	/*
 	 * Store the format, stride, memory buffer address, crop and compose
@@ -409,6 +431,11 @@ int vsp1_du_atomic_update(struct device *dev, unsigned int pipe_index,
 	rpf->colorkey_en = cfg->colorkey_en;
 	rpf->colorkey_alpha = cfg->colorkey_alpha;
 	rpf->interlaced = cfg->interlaced;
+	rpf->alpha_pitch = cfg->alpha_pitch;
+	rpf->ckey = cfg->ckey;
+	rpf->ckey_set0 = cfg->ckey_set0;
+	rpf->ckey_set1 = cfg->ckey_set1;
+	rpf->blend = cfg->blend;
 
 	if ((vsp1->ths_quirks & VSP1_AUTO_FLD_NOT_SUPPORT) &&
 	    rpf->interlaced) {
@@ -420,6 +447,7 @@ int vsp1_du_atomic_update(struct device *dev, unsigned int pipe_index,
 	rpf->mem.addr[0] = cfg->mem[0];
 	rpf->mem.addr[1] = cfg->mem[1];
 	rpf->mem.addr[2] = cfg->mem[2];
+	rpf->mem.alpha = cfg->alpha_mem;
 
 	vsp1->drm->inputs[rpf_index].crop = cfg->src;
 	vsp1->drm->inputs[rpf_index].compose = cfg->dst;
@@ -496,7 +524,12 @@ static int vsp1_du_setup_rpf_pipe(struct vsp1_device *vsp1,
 		__func__, format.format.width, format.format.height,
 		format.format.code, rpf->entity.index);
 
+#if 0
 	format.format.code = MEDIA_BUS_FMT_ARGB8888_1X32;
+#else
+	/* ...do blending in YUV color-space; apply conversion as needed */
+	format.format.code = MEDIA_BUS_FMT_AYUV8_1X32;
+#endif
 
 	ret = v4l2_subdev_call(&rpf->entity.subdev, pad, set_fmt, NULL,
 			       &format);

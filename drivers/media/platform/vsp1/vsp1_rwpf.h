@@ -33,6 +33,7 @@ struct vsp1_video;
 
 struct vsp1_rwpf_memory {
 	dma_addr_t addr[3];
+	dma_addr_t alpha;
 };
 
 struct vsp1_rwpf {
@@ -77,6 +78,11 @@ struct vsp1_rwpf {
 
 	int write_back;
 	dma_addr_t buf_addr[3];
+	unsigned int alpha_pitch;
+	unsigned int ckey;
+	unsigned int ckey_set0;
+	unsigned int ckey_set1;
+	unsigned int blend;
 };
 
 static inline struct vsp1_rwpf *to_rwpf(struct v4l2_subdev *subdev)

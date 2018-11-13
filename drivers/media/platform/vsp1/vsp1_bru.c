@@ -396,6 +396,20 @@ static void bru_prepare(struct vsp1_entity *entity,
 			ctrl |= VI6_BRU_CTRL_SRCSEL_BRUIN(i);
 
 		vsp1_bru_write(bru, dlb, VI6_BRU_CTRL(i), ctrl);
+		dev_dbg(entity->vsp1->dev, "bru#%d: ctrl=%X\n", i, ctrl);
+
+		/* ...set blending formula as defined by the input RPF */
+		if (bru->inputs[i].rpf) {
+			if (bru->inputs[i].rpf->blend) {
+				vsp1_bru_write(bru, dlb, VI6_BRU_BLD(i),
+					       bru->inputs[i].rpf->blend);
+				dev_dbg(entity->vsp1->dev,
+					"bru#%d(#%d): setup blending formula: %X\n",
+					i, bru->inputs[i].rpf->entity.index,
+					bru->inputs[i].rpf->blend);
+				continue;
+			}
+		}
 
 		/*
 		 * Harcode the blending formula to
@@ -462,7 +476,8 @@ struct vsp1_bru *vsp1_bru_create(struct vsp1_device *vsp1,
 	v4l2_ctrl_new_std(&bru->ctrls, &bru_ctrl_ops, V4L2_CID_BG_COLOR,
 			  0, 0xffffff, 1, 0);
 
-	bru->bgcolor = 0;
+	/* ...for YUV, set black background */
+	bru->bgcolor = 0x00800080;
 
 	bru->entity.subdev.ctrl_handler = &bru->ctrls;
 

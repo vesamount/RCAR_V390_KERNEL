@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+//#define DEBUG
 #include <linux/device.h>
 
 #include <media/v4l2-subdev.h>
@@ -351,6 +352,9 @@ static void wpf_configure(struct vsp1_entity *entity,
 	unsigned int height;
 	unsigned int offset;
 	u32 outfmt = 0;
+
+	dev_dbg(vsp1->dev, "wpf#%d: outfmt=%x (csc=%d)\n",
+		wpf->entity.index, outfmt, !!(outfmt & VI6_WPF_OUTFMT_CSC));
 
 	if (pipe->vmute_flag) {
 		vsp1_wpf_write(wpf, dlb, VI6_WPF_SRCRPF,
