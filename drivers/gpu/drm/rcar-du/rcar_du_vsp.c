@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+//#define DEBUG
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>
@@ -93,6 +94,16 @@ void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 
 void rcar_du_vsp_disable(struct rcar_du_crtc *crtc)
 {
+	struct rcar_du_vsp *vsp = crtc->vsp;
+	struct rcar_du_vsp_plane *primary = &vsp->planes[0];
+	struct rcar_du_vsp_plane_state *rstate = to_rcar_vsp_plane_state(primary->plane.state);
+
+	/* ...drop alpha-plane associated with primary plane (why only primary? - tbd) */
+	if (rstate->alphaplane) {
+		drm_framebuffer_unreference(rstate->alphaplane);
+		rstate->alphaplane = NULL;
+	}
+
 	vsp1_du_setup_lif(crtc->vsp->vsp, crtc->vsp_pipe, NULL);
 }
 
@@ -133,6 +144,7 @@ static const u32 formats_kms[] = {
 	DRM_FORMAT_YVU422,
 	DRM_FORMAT_YUV444,
 	DRM_FORMAT_YVU444,
+	DRM_FORMAT_R8,
 };
 
 static const u32 formats_v4l2[] = {
@@ -161,6 +173,7 @@ static const u32 formats_v4l2[] = {
 	V4L2_PIX_FMT_YVU422M,
 	V4L2_PIX_FMT_YUV444M,
 	V4L2_PIX_FMT_YVU444M,
+	V4L2_PIX_FMT_GREY,
 };
 
 static void rcar_du_vsp_plane_setup(struct rcar_du_vsp_plane *plane)
@@ -209,6 +222,28 @@ static void rcar_du_vsp_plane_setup(struct rcar_du_vsp_plane *plane)
 		}
 	}
 
+	/* ...add alpha-plane as needed */
+	if (state->alphaplane) {
+		i = state->format->planes;
+		cfg.alpha_mem = sg_dma_address(state->sg_tables[i].sgl);
+		cfg.alpha_pitch = state->alphaplane->pitches[0];
+		pr_debug("alpha-%d: set alpha-mem address: %llx, pitch=%d\n",
+			 i, (unsigned long long)cfg.alpha_mem, cfg.alpha_pitch);
+	}
+
+	/* ...add blending formula as  needed */
+	if (state->blend) {
+		cfg.blend = state->blend;
+		pr_debug("set blending formula: %X\n", cfg.blend);
+	}
+
+	/* ...add color key property as needed */
+	if (state->ckey) {
+		cfg.ckey = state->ckey;
+		cfg.ckey_set0 = state->ckey_set0;
+		cfg.ckey_set1 = state->ckey_set1;
+	}
+
 	vsp1_du_atomic_update(plane->vsp->vsp, crtc->vsp_pipe,
 			      plane->index, &cfg);
 }
@@ -232,6 +267,23 @@ static int rcar_du_vsp_plane_prepare_fb(struct drm_plane *plane,
 
 		ret = dma_get_sgtable(rcdu->dev, sgt, gem->vaddr, gem->paddr,
 				      gem->base.size);
+		if (ret)
+			goto fail;
+
+		ret = vsp1_du_map_sg(vsp->vsp, sgt);
+		if (!ret) {
+			sg_free_table(sgt);
+			ret = -ENOMEM;
+			goto fail;
+		}
+	}
+
+	/* ...check if we have alpha-plane attached */
+	if (rstate->alphaplane) {
+		struct drm_gem_cma_object *gem = drm_fb_cma_get_gem_obj(rstate->alphaplane, 0);
+		struct sg_table *sgt = &rstate->sg_tables[i++];
+
+		ret = dma_get_sgtable(rcdu->dev, sgt, gem->vaddr, gem->paddr, gem->base.size);
 		if (ret)
 			goto fail;
 
@@ -271,6 +323,14 @@ static void rcar_du_vsp_plane_cleanup_fb(struct drm_plane *plane,
 
 		vsp1_du_unmap_sg(vsp->vsp, sgt);
 		sg_free_table(sgt);
+	}
+
+	if (rstate->alphaplane) {
+		struct sg_table *sgt = &rstate->sg_tables[i];
+
+		vsp1_du_unmap_sg(vsp->vsp, sgt);
+		sg_free_table(sgt);
+		pr_debug("unmap alpha-plane\n");
 	}
 }
 
@@ -351,6 +411,13 @@ rcar_du_vsp_plane_atomic_duplicate_state(struct drm_plane *plane)
 	if (copy == NULL)
 		return NULL;
 
+	if (copy->alphaplane) {
+		drm_framebuffer_reference(copy->alphaplane);
+		pr_debug("duplicate alpha-plane '%p' (refcount=%d)\n",
+			 copy->alphaplane,
+			 drm_framebuffer_read_refcount(copy->alphaplane));
+	}
+
 	__drm_atomic_helper_plane_duplicate_state(plane, &copy->state);
 
 	return &copy->state;
@@ -359,8 +426,17 @@ rcar_du_vsp_plane_atomic_duplicate_state(struct drm_plane *plane)
 static void rcar_du_vsp_plane_atomic_destroy_state(struct drm_plane *plane,
 						   struct drm_plane_state *state)
 {
+	struct rcar_du_vsp_plane_state *rstate = to_rcar_vsp_plane_state(state);
+
+	if (rstate->alphaplane) {
+		pr_debug("unref alpha-plane '%p' (refcount=%d)\n",
+			 rstate->alphaplane,
+			 drm_framebuffer_read_refcount(rstate->alphaplane));
+		drm_framebuffer_unreference(rstate->alphaplane);
+	}
+
 	__drm_atomic_helper_plane_destroy_state(state);
-	kfree(to_rcar_vsp_plane_state(state));
+	kfree(rstate);
 }
 
 static void rcar_du_vsp_plane_reset(struct drm_plane *plane)
@@ -368,6 +444,8 @@ static void rcar_du_vsp_plane_reset(struct drm_plane *plane)
 	struct rcar_du_vsp_plane_state *state;
 
 	if (plane->state) {
+		pr_debug("reset plane '%p'\n",
+			 to_rcar_vsp_plane_state(plane->state)->alphaplane);
 		rcar_du_vsp_plane_atomic_destroy_state(plane, plane->state);
 		plane->state = NULL;
 	}
@@ -398,7 +476,38 @@ static int rcar_du_vsp_plane_atomic_set_property(struct drm_plane *plane,
 		rstate->colorkey = val;
 	else if (property == rcdu->props.colorkey_alpha)
 		rstate->colorkey_alpha = val;
-	else
+	else if (property == rcdu->props.blend)
+		rstate->blend = val;
+	else if (property == rcdu->props.ckey)
+		rstate->ckey = val;
+	else if (property == rcdu->props.ckey_set0)
+		rstate->ckey_set0 = val;
+	else if (property == rcdu->props.ckey_set1)
+		rstate->ckey_set1 = val;
+	else if (property == rcdu->props.alphaplane) {
+		if (rstate->alphaplane) {
+			pr_debug("unref alpha-plane '%p' (refcount=%d)\n",
+				 rstate->alphaplane,
+				 drm_framebuffer_read_refcount(rstate->alphaplane));
+			drm_framebuffer_unreference(rstate->alphaplane);
+		}
+		rstate->alphaplane = drm_framebuffer_lookup(plane->dev, val);
+		if (rstate->alphaplane) {
+			pr_debug("use alpha-plane '%p' (refcount=%d)\n",
+				 rstate->alphaplane,
+				 drm_framebuffer_read_refcount(rstate->alphaplane));
+			/* ...the way how we handle this leads to a "loss"
+			 * of plane reference (it is acquired within
+			 * "drm_property_change_valid_get" but not returned
+			 * in symmetric "drm_property_change_valid_put")
+			 * Whether it is a bug or was done intentionally,
+			 * I don't know. For a moment just drop that
+			 * extra reference right here.
+			 */
+			if (0)
+				drm_framebuffer_unreference(rstate->alphaplane);
+		}
+	} else
 		return -EINVAL;
 
 	return 0;
@@ -418,6 +527,16 @@ static int rcar_du_vsp_plane_atomic_get_property(struct drm_plane *plane,
 		*val = rstate->colorkey;
 	else if (property == rcdu->props.colorkey_alpha)
 		*val = rstate->colorkey_alpha;
+	else if (property == rcdu->props.alphaplane)
+		*val = (rstate->alphaplane ? rstate->alphaplane->base.id : 0);
+	else if (property == rcdu->props.blend)
+		*val = rstate->blend;
+	else if (property == rcdu->props.ckey)
+		*val = rstate->ckey;
+	else if (property == rcdu->props.ckey_set0)
+		*val = rstate->ckey_set0;
+	else if (property == rcdu->props.ckey_set1)
+		*val = rstate->ckey_set1;
 	else
 		return -EINVAL;
 
@@ -434,9 +553,10 @@ int rcar_du_vsp_write_back(struct drm_device *dev, void *data,
 	struct rcar_du_crtc *rcrtc;
 	struct rcar_du_device *rcdu;
 	const struct drm_display_mode *mode;
-	u32 pixelformat, bpp;
-	unsigned int pitch;
+	struct drm_framebuffer *fb;
 	dma_addr_t mem[3];
+	struct sg_table sg_tables[3];
+	int i = 0;
 
 	obj = drm_mode_object_find(dev, sh->crtc_id, DRM_MODE_OBJECT_CRTC);
 	if (!obj)
@@ -447,65 +567,89 @@ int rcar_du_vsp_write_back(struct drm_device *dev, void *data,
 	rcdu = rcrtc->group->dev;
 	mode = &rcrtc->crtc.state->adjusted_mode;
 
-	switch (sh->fmt) {
-	case DRM_FORMAT_RGB565:
-		bpp = 16;
-		pixelformat = V4L2_PIX_FMT_RGB565;
-		break;
-	case DRM_FORMAT_ARGB1555:
-		bpp = 16;
-		pixelformat = V4L2_PIX_FMT_ARGB555;
-		break;
-	case DRM_FORMAT_ARGB8888:
-		bpp = 32;
-		pixelformat = V4L2_PIX_FMT_ABGR32;
-		break;
-	default:
-		dev_err(rcdu->dev, "specified format is not supported.\n");
+	fb = drm_framebuffer_lookup(dev, sh->buff);
+	if (!fb) {
+		dev_err(dev->dev,
+			"failed to lookup destination framebuffer '%lu'\n",
+			sh->buff);
 		return -EINVAL;
 	}
 
-	pitch = mode->hdisplay * bpp / 8;
+	/* ...check framebuffer is okay */
+	if ((fb->width != (mode->hdisplay)) ||
+	    (fb->height != (mode->vdisplay))) {
+		dev_err(dev->dev, "wrong fb mode: %d*%d vs %d*%d\n",
+			fb->width, fb->height, mode->hdisplay, mode->vdisplay);
+		ret = -EINVAL;
+		goto done;
+	}
 
-	mem[0] = sh->buff;
-	mem[1] = 0;
-	mem[2] = 0;
+	/* ...need to verify compatibility of output format, I guess - tbd */
 
-	if (sh->width != mode->hdisplay ||
-	    sh->height != mode->vdisplay)
-		return -EINVAL;
+	/* ...fill memory planes addresses */
+	for (i = 0; i < 3; i++) {
+		struct drm_gem_cma_object  *gem;
+		struct sg_table *sgt = &sg_tables[i];
 
-	if ((pitch * mode->vdisplay) > sh->buff_len)
-		return -EINVAL;
+		gem = drm_fb_cma_get_gem_obj(fb, i);
+		if (!gem)
+			break;
 
-	ret = vsp1_du_setup_wb(rcrtc->vsp->vsp, pixelformat, pitch, mem,
-			       rcrtc->vsp_pipe);
+		ret = dma_get_sgtable(rcdu->dev, sgt, gem->vaddr, gem->paddr,
+				      gem->base.size);
+		if (ret)
+			goto done;
+
+		ret = vsp1_du_map_sg(rcrtc->vsp->vsp, sgt);
+		if (!ret) {
+			sg_free_table(sgt);
+			ret = -ENOMEM;
+			goto done;
+		}
+		mem[i] = sg_dma_address(sg_tables[i].sgl) + fb->offsets[i];
+	}
+
+	dev_info(dev->dev, "setup write-back (pixfmt=%X, %u*%u, planes: %d)\n",
+		 fb->format->format, fb->width, fb->height, i);
+
+	ret = vsp1_du_setup_wb(rcrtc->vsp->vsp, fb->format->format,
+			       fb->pitches[0], mem, rcrtc->vsp_pipe);
 	if (ret != 0)
-		return ret;
+		goto done;
 
 	ret = vsp1_du_wait_wb(rcrtc->vsp->vsp, WB_STAT_CATP_SET,
 			      rcrtc->vsp_pipe);
 	if (ret != 0)
-		return ret;
+		goto done;
 
 	ret = rcar_du_async_commit(dev, crtc);
 	if (ret != 0)
-		return ret;
+		goto done;
 
 	ret = vsp1_du_wait_wb(rcrtc->vsp->vsp, WB_STAT_CATP_START,
 			      rcrtc->vsp_pipe);
 	if (ret != 0)
-		return ret;
+		goto done;
 
 	ret = rcar_du_async_commit(dev, crtc);
 	if (ret != 0)
-		return ret;
+		goto done;
 
 	ret = vsp1_du_wait_wb(rcrtc->vsp->vsp, WB_STAT_CATP_DONE,
 			      rcrtc->vsp_pipe);
 	if (ret != 0)
-		return ret;
+		goto done;
 
+done:
+	/* ...unmap all tables */
+	while (i--) {
+		struct sg_table *sgt = &sg_tables[i];
+
+		vsp1_du_unmap_sg(rcrtc->vsp->vsp, sgt);
+		sg_free_table(sgt);
+	}
+
+	drm_framebuffer_unreference(fb);
 	return ret;
 }
 
@@ -625,8 +769,10 @@ int rcar_du_vsp_init(struct rcar_du_vsp *vsp, struct device_node *np,
 		drm_plane_helper_add(&plane->plane,
 				     &rcar_du_vsp_plane_helper_funcs);
 
+#if 0   // ...use same set of properties for all planes
 		if (type == DRM_PLANE_TYPE_PRIMARY)
 			continue;
+#endif
 
 		drm_object_attach_property(&plane->plane.base,
 					   rcdu->props.alpha, 255);
@@ -639,6 +785,16 @@ int rcar_du_vsp_init(struct rcar_du_vsp *vsp, struct device_node *np,
 						   0);
 		drm_plane_create_zpos_property(&plane->plane, 1, 1,
 					       vsp->num_planes - 1);
+		drm_object_attach_property(&plane->plane.base,
+					   rcdu->props.alphaplane, 0);
+		drm_object_attach_property(&plane->plane.base,
+					   rcdu->props.blend, 0);
+		drm_object_attach_property(&plane->plane.base,
+					   rcdu->props.ckey, 0);
+		drm_object_attach_property(&plane->plane.base,
+					   rcdu->props.ckey_set0, 0);
+		drm_object_attach_property(&plane->plane.base,
+					   rcdu->props.ckey_set1, 0);
 	}
 
 	return 0;

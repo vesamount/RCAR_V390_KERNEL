@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+//#define DEBUG
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
@@ -730,6 +731,7 @@ static const uint32_t formats[] = {
 	DRM_FORMAT_NV12,
 	DRM_FORMAT_NV21,
 	DRM_FORMAT_NV16,
+	DRM_FORMAT_R8,
 };
 
 int rcar_du_planes_init(struct rcar_du_group *rgrp)

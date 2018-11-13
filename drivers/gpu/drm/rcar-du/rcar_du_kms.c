@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+//#define DEBUG
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
@@ -95,6 +96,12 @@ static const struct rcar_du_format_info rcar_du_format_infos[] = {
 		.bpp = 16,
 		.planes = 2,
 		.pnmr = PnMR_SPIM_TP_OFF | PnMR_DDDF_YC,
+		.edf = PnDDCR4_EDF_NONE,
+	}, {
+		.fourcc = DRM_FORMAT_R8,
+		.bpp = 8,
+		.planes = 1,
+		.pnmr = PnMR_SPIM_TP_OFF | PnMR_DDDF_8BPP,
 		.edf = PnDDCR4_EDF_NONE,
 	},
 	/*
@@ -550,6 +557,37 @@ static int rcar_du_properties_init(struct rcar_du_device *rcdu)
 		if (!rcdu->props.colorkey_alpha)
 			return -ENOMEM;
 	}
+
+	rcdu->props.alphaplane =
+		drm_property_create(rcdu->ddev, DRM_MODE_PROP_OBJECT, "alphaplane", 1);
+	if (rcdu->props.alphaplane == NULL)
+		return -ENOMEM;
+
+	rcdu->props.alphaplane->values[0] = DRM_MODE_OBJECT_FB;
+
+	rcdu->props.blend =
+		drm_property_create_range(rcdu->ddev, 0, "blend",
+					  0, 0xffffffff);
+	if (rcdu->props.blend == NULL)
+		return -ENOMEM;
+
+	rcdu->props.ckey =
+		drm_property_create_range(rcdu->ddev, 0, "ckey",
+					  0, 0xffffffff);
+	if (rcdu->props.ckey == NULL)
+		return -ENOMEM;
+
+	rcdu->props.ckey_set0 =
+		drm_property_create_range(rcdu->ddev, 0, "ckey_set0",
+					  0, 0xffffffff);
+	if (rcdu->props.ckey_set0 == NULL)
+		return -ENOMEM;
+
+	rcdu->props.ckey_set1 =
+		drm_property_create_range(rcdu->ddev, 0, "ckey_set1",
+					  0, 0xffffffff);
+	if (rcdu->props.ckey_set1 == NULL)
+		return -ENOMEM;
 
 	return 0;
 }
