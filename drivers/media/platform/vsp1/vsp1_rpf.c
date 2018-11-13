@@ -122,12 +122,16 @@ static void rpf_prepare(struct vsp1_entity *entity,
 
 	// ...setup alpha-plane as required
 	if (rpf->mem.alpha) {
-		vsp1_rpf_write(rpf, dlb, VI6_RPF_SRCM_ADDR_AI, rpf->mem.alpha);
+		struct v4l2_rect *crop = vsp1_rwpf_get_crop(rpf, rpf->entity.config);
+
+		vsp1_rpf_write(rpf, dlb, VI6_RPF_SRCM_ADDR_AI,
+			       rpf->mem.alpha + crop->top * rpf->alpha_pitch + crop->left);
 		vsp1_rpf_write(rpf, dlb, VI6_RPF_ALPH_SEL, VI6_RPF_ALPH_SEL_ASEL_8B_PLANE);
 		vsp1_rpf_write(rpf, dlb, VI6_RPF_SRCM_ASTRIDE, rpf->alpha_pitch);
 		dev_dbg(entity->vsp1->dev,
-			"rpf#%d: setup alpha-plane: buffer=%pad, stride=%u\n",
-			rpf->entity.index, &rpf->mem.alpha, rpf->alpha_pitch);
+			"rpf#%d: setup alpha-plane: buffer=%pad, crop=%d,%d, stride=%u\n",
+			rpf->entity.index, &rpf->mem.alpha, crop->left, crop->top,
+			rpf->alpha_pitch);
 		goto out;
 	}
 

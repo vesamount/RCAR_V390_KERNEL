@@ -407,7 +407,8 @@ void vsp1_dl_set_addr_auto_fld(struct vsp1_dl_body *dlb,
 	dlb->src_dst_addr[v_bot_index].addr = v_bot_addr;
 
 	/* ...set alpha-plane address as needed */
-	dlb->src_dst_addr[alpha_index].addr = rpf->mem.alpha;
+	dlb->src_dst_addr[alpha_index].addr = rpf->mem.alpha +
+					      crop->top * width + crop->left;
 }
 
 static struct vsp1_dl_list *vsp1_dl_list_alloc(struct vsp1_dl_manager *dlm,
