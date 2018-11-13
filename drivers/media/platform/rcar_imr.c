@@ -454,7 +454,7 @@ static int imr_queue_setup(struct vb2_queue *vq,
 
 static int imr_buf_prepare(struct vb2_buffer *vb)
 {
-	struct imr_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
+	/* struct imr_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue); */
 
 	/* ...unclear yet if we want to prepare a buffer somehow (cache invalidation? - tbd) */
 	return 0;
@@ -945,8 +945,8 @@ static inline void imr_dl_program_setup(struct imr_ctx *ctx, struct imr_cfg *cfg
 static int imr_ioctl_map(struct imr_ctx *ctx, struct imr_map_desc *desc)
 {
 	struct imr_device      *imr = ctx->imr;
-	struct imr_mesh        *mesh;
-	int                     vbo_num;
+	struct imr_mesh        *mesh = NULL;
+	int                     vbo_num = 0;
 	struct imr_cfg         *cfg;
 	void                   *buf, *map;
 	u32                     type;
@@ -1122,11 +1122,9 @@ static int imr_ioctl_map_raw(struct imr_ctx *ctx, struct imr_map_desc *desc)
 {
 	struct imr_device      *imr = ctx->imr;
 	u32                     type = desc->type;
-	u32                     length = desc->size;
 	struct imr_cfg         *cfg;
 	void                   *dl_vaddr;
 	u32                     dl_size;
-	u32                     dl_start_offset;
 	dma_addr_t              dl_dma_addr;
 
 	/* ...check RSE */
@@ -1157,6 +1155,7 @@ static int imr_ioctl_map_raw(struct imr_ctx *ctx, struct imr_map_desc *desc)
 
 	/* ...get pointer to the new display list */
 	dl_vaddr = cfg->dl_vaddr;
+	dl_dma_addr = cfg->dl_dma_addr;
 
 	/* ...prepare main DL-program */
 	imr_dl_program_setup(ctx, cfg, type, dl_vaddr, (u32)(uintptr_t)desc->data);
@@ -1169,7 +1168,7 @@ static int imr_ioctl_map_raw(struct imr_ctx *ctx, struct imr_map_desc *desc)
 		cfg->id, (u32)dl_dma_addr, dl_size, 0);
 
 	if (debug >= 4)
-		print_hex_dump_bytes("DL-", DUMP_PREFIX_OFFSET, dl_vaddr + dl_start_offset, dl_size - dl_start_offset);
+		print_hex_dump_bytes("DL-", DUMP_PREFIX_OFFSET, dl_vaddr, dl_size);
 
 	/* ...success */
 	return 0;
@@ -1679,6 +1678,7 @@ static const struct v4l2_file_operations imr_fops = {
  ******************************************************************************/
 
 /* ...job cleanup function */
+#if 0
 static void imr_cleanup(struct imr_ctx *ctx)
 {
 	struct imr_device      *imr = ctx->imr;
@@ -1697,6 +1697,7 @@ static void imr_cleanup(struct imr_ctx *ctx)
 	/* ...release lock before we mark current job as finished */
 	spin_unlock_irqrestore(&imr->lock, flags);
 }
+#endif
 
 /* ...job execution function */
 static void imr_device_run(void *priv)
@@ -1918,8 +1919,9 @@ static int imr_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct device_node *np = pdev->dev.of_node;
 	int ret;
-	phandle *prop;
+	const phandle *prop;
 	struct device_node *node;
+	struct device *adev;
 
 	imr = devm_kzalloc(&pdev->dev, sizeof(*imr), GFP_KERNEL);
 	if (!imr)
@@ -1986,7 +1988,8 @@ static int imr_probe(struct platform_device *pdev)
 		}
 	}
 
-	struct device *adev = device_create(imr_alloc_class, imr->dev, MKDEV(0, 0), NULL, "%s_alloc", dev_name(&pdev->dev));
+	adev = device_create(imr_alloc_class, imr->dev, MKDEV(0, 0), NULL,
+			     "%s_alloc", dev_name(&pdev->dev));
 	if (IS_ERR(adev)) {
 		v4l2_err(&imr->v4l2_dev, "Failed to create alloc-device\n");
 		ret = PTR_ERR(adev);
