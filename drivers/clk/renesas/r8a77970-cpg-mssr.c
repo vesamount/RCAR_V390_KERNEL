@@ -90,6 +90,7 @@ static const struct cpg_core_clk r8a77970_core_clks[] __initconst = {
 	DEF_FIXED("s2d1",	R8A77970_CLK_S2D1,  CLK_PLL1_DIV2,  6, 1),
 	DEF_FIXED("s2d2",	R8A77970_CLK_S2D2,  CLK_PLL1_DIV2, 12, 1),
 	DEF_FIXED("s2d4",	R8A77970_CLK_S2D4,  CLK_PLL1_DIV2, 24, 1),
+	DEF_FIXED("rpcsrc",     R8A77970_CLK_RPCSRC, CLK_PLL1_DIV2, 30, 1),
 
 	DEF_BASE("sd0h", R8A77970_CLK_SD0H, CLK_TYPE_R8A77970_SD0H,
 		 CLK_PLL1_DIV2),
@@ -168,6 +169,7 @@ static const struct mssr_mod_clk r8a77970_mod_clks[] __initconst = {
 	DEF_MOD("gpio1",		 911,	R8A77970_CLK_CP),
 	DEF_MOD("gpio0",		 912,	R8A77970_CLK_CP),
 	DEF_MOD("can-fd",		 914,	R8A77970_CLK_S2D2),
+	DEF_MOD("rpc",			 917,	R8A77970_CLK_RPCSRC),
 	DEF_MOD("i2c4",			 927,	R8A77970_CLK_S2D2),
 	DEF_MOD("i2c3",			 928,	R8A77970_CLK_S2D2),
 	DEF_MOD("i2c2",			 929,	R8A77970_CLK_S2D2),
