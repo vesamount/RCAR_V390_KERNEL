@@ -7,6 +7,14 @@ menuconfig MTD_SPI_NOR
 
 if MTD_SPI_NOR
 
+
+config SPI_RENESAS_RPC
+	tristate "Renesas RPC controller"
+	depends on ARCH_R8A7795 || ARCH_R8A7796 || ARCH_R8A77970 || ARCH_R8A77980 || COMPILE_TEST
+	help
+	  QSPI driver for Renesas SPI Multi I/O Bus controller. This controller
+	  supports normal, dual and quad spi for one or two SPI NOR Flashes.
+
 config MTD_MT81xx_NOR
 	tristate "Mediatek MT81xx SPI NOR flash controller"
 	depends on HAS_IOMEM
