@@ -27,6 +27,7 @@ enum rcar_gen3_clk_types {
 	CLK_TYPE_GEN3_ZG,
 	CLK_TYPE_GEN3_RINT,
 	CLK_TYPE_GEN3_OSC,
+	CLK_TYPE_GEN3_RPCSRC,
 
 	/* SoC specific definitions start here */
 	CLK_TYPE_GEN3_SOC_BASE,
@@ -47,6 +48,9 @@ enum rcar_gen3_clk_types {
 
 #define DEF_GEN3_Z(_name, _id, _type, _parent, _div)	\
 	DEF_BASE(_name, _id, _type, _parent, .div = _div)
+
+#define DEF_GEN3_RPCSRC(_name, _id, _parent, _offset)	\
+	DEF_BASE(_name, _id, CLK_TYPE_GEN3_RPCSRC, _parent, .offset = _offset)
 
 struct rcar_gen3_cpg_pll_config {
 	u8 extal_div;

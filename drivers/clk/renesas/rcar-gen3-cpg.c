@@ -728,6 +728,195 @@ free_clock:
 	return clk;
 }
 
+/*
+ *  RPCSCK
+ */
+struct rpc_clock {
+	struct clk_hw hw;
+	void __iomem *reg;
+	const struct clk_div_table *div_table;
+	unsigned int div_num;
+	unsigned int div_min;
+	unsigned int div_max;
+};
+
+static const struct clk_div_table cpg_rpc_div_table[] = {
+	{  0x11, 20 }, {  0x13, 40 }, {  0x15, 60 }, {  0x17, 80 },
+	{  0x19, 24 }, {  0x1B, 48 }, {  0x1D, 72 }, {  0x1F, 96 },
+};
+
+#define to_rpc_clock(_hw) container_of(_hw, struct rpc_clock, hw)
+
+#define CPG_RPC_ENA_MASK	(BIT(9) | BIT(8))
+#define CPG_RPC_SCALE_MASK	(0x1F)
+
+static int cpg_rpc_clock_endisable(void __iomem *reg, bool enable)
+{
+	u32 val;
+
+	val = readl(reg);
+
+	if (enable)
+		val &= ~CPG_RPC_ENA_MASK;
+	else
+		val |= CPG_RPC_ENA_MASK;
+
+	writel(val, reg);
+	return 0;
+};
+
+static int cpg_rpc_clock_enable(struct clk_hw *hw)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+
+	cpg_rpc_clock_endisable(clock->reg, true);
+
+	return 0;
+}
+
+static void cpg_rpc_clock_disable(struct clk_hw *hw)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+
+	cpg_rpc_clock_endisable(clock->reg, false);
+}
+
+static int cpg_rpc_clock_is_enabled(struct clk_hw *hw)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+
+	return !(readl(clock->reg) & CPG_RPC_ENA_MASK);
+}
+
+static unsigned long cpg_rpc_clock_recalc_rate(struct clk_hw *hw,
+					       unsigned long parent_rate)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+	unsigned long rate = parent_rate;
+	u32 val, scale;
+	unsigned int i;
+
+	val = readl(clock->reg);
+
+	scale = val & CPG_RPC_SCALE_MASK;
+	for (i = 0; i < clock->div_num; i++)
+		if (scale == clock->div_table[i].val)
+			break;
+
+	if (i >= clock->div_num)
+		return 0;
+
+	return DIV_ROUND_CLOSEST(rate, clock->div_table[i].div);
+}
+
+static unsigned int cpg_rpc_clock_calc_div(struct rpc_clock *clock,
+					   unsigned long rate,
+					   unsigned long parent_rate)
+{
+	unsigned int div;
+
+	if (!rate)
+		rate = 1;
+
+	div = DIV_ROUND_CLOSEST(parent_rate, rate);
+
+	return clamp_t(unsigned int, div, clock->div_min, clock->div_max);
+}
+
+static long cpg_rpc_clock_round_rate(struct clk_hw *hw, unsigned long rate,
+				     unsigned long *parent_rate)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+	unsigned int div = cpg_rpc_clock_calc_div(clock, rate, *parent_rate);
+
+	return DIV_ROUND_CLOSEST(*parent_rate, div);
+}
+
+static int cpg_rpc_clock_set_rate(struct clk_hw *hw, unsigned long rate,
+				  unsigned long parent_rate)
+{
+	struct rpc_clock *clock = to_rpc_clock(hw);
+	unsigned int div = cpg_rpc_clock_calc_div(clock, rate, parent_rate);
+	u32 val;
+	unsigned int i, nearest_i, nearest_div;
+
+	for (i = 0; i < clock->div_num; i++)
+		if (div == clock->div_table[i].div)
+			break;
+
+	if (i >= clock->div_num) {
+		/* find nearest */
+		nearest_div = -1;
+		nearest_i = clock->div_num;
+		for (i = 0; i < clock->div_num; i++) {
+			if (clock->div_table[i].div >= div &&
+			    clock->div_table[i].div <= nearest_div) {
+				nearest_i = i;
+				nearest_div = clock->div_table[i].div;
+			}
+		}
+
+		i = nearest_i;
+	}
+
+	if (i >= clock->div_num)
+		return -EINVAL;
+
+	val = readl(clock->reg);
+	val &= ~CPG_RPC_SCALE_MASK;
+	val |= clock->div_table[i].val;
+	writel(val, clock->reg);
+
+	return 0;
+}
+
+static const struct clk_ops cpg_rpc_clock_ops = {
+	.enable = cpg_rpc_clock_enable,
+	.disable = cpg_rpc_clock_disable,
+	.is_enabled = cpg_rpc_clock_is_enabled,
+	.recalc_rate = cpg_rpc_clock_recalc_rate,
+	.round_rate = cpg_rpc_clock_round_rate,
+	.set_rate = cpg_rpc_clock_set_rate,
+};
+
+static struct clk * __init cpg_rpc_clk_register(const struct cpg_core_clk *core,
+						void __iomem *base,
+						const char *parent_name)
+{
+	struct clk_init_data init;
+	struct rpc_clock *clock;
+	struct clk *clk;
+	unsigned int i;
+
+	clock = kzalloc(sizeof(*clock), GFP_KERNEL);
+	if (!clock)
+		return ERR_PTR(-ENOMEM);
+
+	init.name = core->name;
+	init.ops = &cpg_rpc_clock_ops;
+	init.flags = CLK_IS_BASIC | CLK_SET_RATE_PARENT;
+	init.parent_names = &parent_name;
+	init.num_parents = 1;
+
+	clock->reg = base + core->offset;
+	clock->hw.init = &init;
+	clock->div_table = cpg_rpc_div_table;
+	clock->div_num = ARRAY_SIZE(cpg_rpc_div_table);
+
+	clock->div_max = clock->div_table[0].div;
+	clock->div_min = clock->div_max;
+	for (i = 1; i < clock->div_num; i++) {
+		clock->div_max = max(clock->div_max, clock->div_table[i].div);
+		clock->div_min = min(clock->div_min, clock->div_table[i].div);
+	}
+
+	clk = clk_register(NULL, &clock->hw);
+	if (IS_ERR(clk))
+		kfree(clock);
+
+	return clk;
+}
+
 static const struct rcar_gen3_cpg_pll_config *cpg_pll_config __initdata;
 static unsigned int cpg_clk_extalr __initdata;
 static u32 cpg_mode __initdata;
@@ -879,6 +1068,9 @@ struct clk * __init rcar_gen3_cpg_clk_register(struct device *dev,
 
 		return cpg_zg_clk_register(core->name, __clk_get_name(parent),
 					   base, core->div);
+
+	case CLK_TYPE_GEN3_RPCSRC:
+		return cpg_rpc_clk_register(core, base, __clk_get_name(parent));
 
 	default:
 		return ERR_PTR(-EINVAL);
