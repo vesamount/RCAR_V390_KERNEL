@@ -634,12 +634,7 @@
 	};
 
 	avb_pins: avb {
-		groups = "avb_mdc", "avb_mdio",
-			"avb_rx_ctrl", "avb_rxc",
-			"avb_rd4",
-			"avb_tx_ctrl", "avb_txc",
-			"avb_txcrefclk",
-			"avb_td4";
+		groups = "avb_mdio", "avb_rgmii";
 		function = "avb";
 	};
 
