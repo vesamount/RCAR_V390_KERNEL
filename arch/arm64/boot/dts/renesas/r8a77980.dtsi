@@ -1908,6 +1908,11 @@
 			iccom,ack-timeout = <100>;
 			iccom,trg-timeout = <100>;
 		};
+
+		qos@e67e0000 {
+			compatible = "renesas,qos";
+			reg = <0 0xe67e0000 0 0x10090>;
+		};
 	};
 
 	thermal-zones {
