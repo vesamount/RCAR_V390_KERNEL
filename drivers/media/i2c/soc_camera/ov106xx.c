@@ -24,6 +24,7 @@
 #include "ov2775.c"
 #include "imx390.c"
 #include "ox03a.c"
+#include "isx016.c"
 
 static enum {
 	ID_OV10635,
@@ -41,6 +42,7 @@ static enum {
 	ID_OV2775,
 	ID_IMX390,
 	ID_OX03A,
+	ID_ISX016,
 } chip_id;
 
 static int ov106xx_probe(struct i2c_client *client,
@@ -139,6 +141,12 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
+	ret = isx016_probe(client, did);
+	if (!ret) {
+		chip_id = ID_ISX016;
+		goto out;
+	}
+
 	v4l_err(client, "failed to probe @ 0x%02x (%s)\n",
 			client->addr, client->adapter->name);
 out:
@@ -192,6 +200,9 @@ static int ov106xx_remove(struct i2c_client *client)
 		break;
 	case ID_OX03A:
 		ox03a_remove(client);
+		break;
+	case ID_ISX016:
+		isx016_remove(client);
 		break;
 	};
 
