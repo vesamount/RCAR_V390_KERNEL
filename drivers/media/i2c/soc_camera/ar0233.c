@@ -71,6 +71,25 @@ static int ar0233_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+static int ar0233_set_window(struct v4l2_subdev *sd)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct ar0233_priv *priv = to_ar0233(client);
+
+	dev_err(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
+
+	/* horiz crop start */
+	reg16_write16(client, 0x3004, priv->rect.left);
+	/* horiz crop end */
+	reg16_write16(client, 0x3008, priv->rect.left + priv->rect.width - 1);
+	/* vert crop start */
+	reg16_write16(client, 0x3002, priv->rect.top);
+	/* vert crop end */
+	reg16_write16(client, 0x3006, priv->rect.top + priv->rect.height + 1);
+
+	return 0;
+};
+
 static int ar0233_get_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
 			 struct v4l2_subdev_format *format)
@@ -159,6 +178,8 @@ static int ar0233_set_selection(struct v4l2_subdev *sd,
 	priv->rect.top = rect->top;
 	priv->rect.width = rect->width;
 	priv->rect.height = rect->height;
+
+	ar0233_set_window(sd);
 
 	return 0;
 }
