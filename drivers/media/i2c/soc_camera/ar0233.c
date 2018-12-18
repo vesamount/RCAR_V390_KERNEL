@@ -22,7 +22,7 @@
 
 #include "ar0233.h"
 
-#define AR0233_I2C_ADDR		0x10
+static const int ar0233_i2c_addr[] = {0x10, 0x20};
 
 #define AR0233_PID		0x3000
 #define AR0233_VERSION_REG	0x0354
@@ -380,9 +380,23 @@ static int ar0233_initialize(struct i2c_client *client)
 	u16 pid = 0;
 	int ret = 0;
 	int tmp_addr;
+	int i;
 
-	/* check and show model ID */
-	reg16_read16(client, AR0233_PID, &pid);
+	for (i = 0; i < ARRAY_SIZE(ar0233_i2c_addr); i++) {
+		tmp_addr = client->addr;
+		if (priv->ti9x4_addr) {
+			client->addr = priv->ti9x4_addr;/* Deserializer I2C address */
+			reg8_write(client, 0x5d, ar0233_i2c_addr[i] << 1); /* Sensor native I2C address */
+			usleep_range(2000, 2500);	/* wait 2ms */
+		}
+		client->addr = tmp_addr;
+
+		/* check model ID */
+		reg16_read16(client, AR0233_PID, &pid);
+
+		if (pid == AR0233_VERSION_REG)
+			break;
+	}
 
 	if (pid != AR0233_VERSION_REG) {
 		dev_dbg(&client->dev, "Product ID error %x\n", pid);
@@ -395,12 +409,16 @@ static int ar0233_initialize(struct i2c_client *client)
 	if (priv->ti9x4_addr) {
 		/* CLK_OUT=22.5792*160*M/N/CLKDIV -> CLK_OUT=27MHz: CLKDIV=2, M=15, N=251: 22.5792*160/8*15/251=26.987MHz=CLK_OUT */
 		client->addr = priv->ti9x3_addr;			/* Serializer I2C address */
+#if 0
 		reg8_write(client, 0x06, 0x6f);				/* Set CLKDIV and M */
 		reg8_write(client, 0x07, 0xfb);				/* Set N */
-		reg8_write(client, 0x0e, 0x1f);				/* Set FSIN GPIO to output */
+#endif
+		reg8_write(client, 0x0e, 0xf0);				/* Enable all remote gpios */
 	}
 	client->addr = tmp_addr;
 
+	/* Read OTP IDs */
+	ar0233_otp_id_read(client);
 	/* Program wizard registers */
 	ar0233_set_regs(client, ar0233_regs_wizard, ARRAY_SIZE(ar0233_regs_wizard));
 
@@ -408,9 +426,6 @@ static int ar0233_initialize(struct i2c_client *client)
 	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
-
-	/* Read OTP IDs */
-	ar0233_otp_id_read(client);
 
 	dev_info(&client->dev, "ar0233 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
 		 pid, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
@@ -444,7 +459,7 @@ static int ar0233_parse_dt(struct device_node *np, struct ar0233_priv *priv)
 	of_node_put(endpoint);
 
 	if (!priv->ti9x4_addr) {
-		dev_err(&client->dev, "deserializer does not present\n");
+		dev_dbg(&client->dev, "deserializer does not present\n");
 		return -EINVAL;
 	}
 
@@ -456,13 +471,8 @@ static int ar0233_parse_dt(struct device_node *np, struct ar0233_priv *priv)
 		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
 		usleep_range(2000, 2500);				/* wait 2ms */
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
-		reg8_write(client, 0x5d, AR0233_I2C_ADDR << 1);		/* Sensor native I2C address */
-
-		reg8_write(client, 0x6e, 0x8a);				/* GPIO0 - fsin, GPIO1 - NC */
 	}
 	client->addr = tmp_addr;
-
-	mdelay(10);
 
 	return 0;
 }

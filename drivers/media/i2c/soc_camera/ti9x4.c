@@ -44,6 +44,7 @@ struct ti9x4_priv {
 	int			ser_id;
 	int			vc_map;
 	int			csi_map;
+	int			gpio[4];
 	struct gpio_desc	*pwen; /* chip power en */
 	struct gpio_desc	*poc_gpio[4]; /* PoC power supply */
 	struct v4l2_clk		*ref_clk; /* ref clock */
@@ -80,6 +81,16 @@ MODULE_PARM_DESC(vc_map, " CSI VC MAP (default: 0xe4 - linear map VCx=LINKx)");
 static int csi_map = 0;
 module_param(csi_map, int, 0644);
 MODULE_PARM_DESC(csi_map, " CSI TX MAP (default: 0 - forwarding of all links to CSI0)");
+
+static int gpio0 = 0, gpio1 = 0, gpio2 = 0, gpio3 = 0;
+module_param(gpio0, int, 0644);
+MODULE_PARM_DESC(gpio0, "  GPIO0 function select (default: GPIO0 low level)");
+module_param(gpio1, int, 0644);
+MODULE_PARM_DESC(gpio1, "  GPIO1 function select (default: GPIO1 low level)");
+module_param(gpio2, int, 0644);
+MODULE_PARM_DESC(gpio2, "  GPIO2 function select (default: GPIO2 low level)");
+module_param(gpio3, int, 0644);
+MODULE_PARM_DESC(gpio3, "  GPIO3 function select (default: GPIO3 low level)");
 
 #ifdef TI954_SILICON_ERRATA
 static int indirect_write(struct i2c_client *client, unsigned int page, u8 reg, u8 val)
@@ -204,9 +215,6 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 #endif
 }
 
-//#define SENSOR_ID 0x30  // ov10635
-//#define SENSOR_ID 0x24  // ov490
-
 static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 {
 	struct ti9x4_priv *priv = i2c_get_clientdata(client);
@@ -230,7 +238,7 @@ static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 	}
 
 	reg8_write(client, 0x5c, priv->ti9x3_addr_map[idx] << 1); /* TI9X3 I2C addr */
-//	reg8_write(client, 0x5d, SENSOR_ID << 1);		/* SENSOR I2C native - must be set by sensor driver */
+//	reg8_write(client, 0x5d, 0x30 << 1);			/* SENSOR I2C native - must be set by sensor driver */
 //	reg8_write(client, 0x65, (0x60 + idx) << 1);		/* SENSOR I2C translated - must be set by sensor driver */
 
 	if (priv->is_coax)
@@ -262,7 +270,8 @@ static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 	reg8_write(client, 0x70, ((priv->vc_map >> (idx * 4)) << 6) | 0x1e); /* CSI data type: yuv422 8-bit, assign VC */
 	reg8_write(client, 0x71, ((priv->vc_map >> (idx * 4)) << 6) | 0x2c); /* CSI data type: RAW12, assign VC */
 	reg8_write(client, 0xbc, 0x00);				/* Setup minimal time between FV and LV to 3 PCLKs */
-	reg8_write(client, 0x6e, 0x88);				/* Sensor reset: backchannel GPIO0/GPIO1 set low */
+	reg8_write(client, 0x6e, 0x88 | (priv->gpio[1] << 4) | priv->gpio[0]); /* Remote GPIO1/GPIO0 setup */
+	reg8_write(client, 0x6f, 0x88 | (priv->gpio[3] << 4) | priv->gpio[2]); /* Remote GPIO3/GPIO2 setup */
 	reg8_write(client, 0x72, priv->vc_map >> (idx * 4));	/* CSI VC MAP */
 }
 
@@ -284,6 +293,10 @@ static int ti9x4_initialize(struct i2c_client *client)
 
 		ti9x4_fpdlink3_setup(client, idx);
 	}
+
+	/* extra delay to wait imager power up */
+	if (priv->poc_delay)
+		mdelay(350);
 
 	client->addr = priv->des_addr;
 
@@ -369,7 +382,7 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	char forwarding_mode_default[20] = "round-robin"; /* round-robin, synchronized */
 	struct property *csi_rate_prop, *dvp_order_prop;
 	u8 val = 0;
-	char poc_name[10];
+	char name[10];
 
 	if (of_property_read_u32(np, "ti,links", &priv->links))
 		priv->links = 4;
@@ -391,8 +404,8 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	}
 
 	for (i = 0; i < 4; i++) {
-		sprintf(poc_name, "POC%d", i);
-		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, kstrdup(poc_name, GFP_KERNEL), 0);
+		sprintf(name, "POC%d", i);
+		priv->poc_gpio[i] = devm_gpiod_get_optional(&client->dev, kstrdup(name, GFP_KERNEL), 0);
 	}
 
 	reg8_read(client, 0x00, &val);				/* read TI9x4 I2C address */
@@ -429,9 +442,14 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 	if (of_property_read_u32(np, "ti,ser_id", &priv->ser_id))
 		priv->ser_id = TI913_ID;
 	if (of_property_read_u32(np, "ti,poc-delay", &priv->poc_delay))
-		priv->poc_delay = 50;
+		priv->poc_delay = 10;
 	if (of_property_read_u32(np, "ti,vc-map", &priv->vc_map))
 		priv->vc_map = 0x3210;
+	for (i = 0; i < 4; i++) {
+		sprintf(name, "ti,gpio%d", i);
+		if (of_property_read_u32(np, name, &priv->gpio[i]))
+			priv->gpio[i] = 0;
+	}
 
 	/*
 	 * CSI forwarding of all links is to CSI0 by default.
@@ -469,6 +487,14 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 		priv->vc_map = vc_map;
 	if (csi_map)
 		priv->csi_map = csi_map;
+	if (gpio0)
+		priv->gpio[0] = gpio0;
+	if (gpio1)
+		priv->gpio[1] = gpio1;
+	if (gpio2)
+		priv->gpio[2] = gpio2;
+	if (gpio3)
+		priv->gpio[3] = gpio3;
 
 	for (i = 0; ; i++) {
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
