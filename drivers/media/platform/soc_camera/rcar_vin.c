@@ -102,6 +102,7 @@
 
 /* Register bit fields for R-Car VIN */
 /* Video n Main Control Register bits */
+#define VNMC_ISPE		(1 << 30)
 #define VNMC_DPINE		(1 << 27)
 #define VNMC_SCLE		(1 << 26)
 #define VNMC_FOC		(1 << 21)
@@ -188,6 +189,7 @@
 #define RCAR_VIN_BT601			(1 << 2)
 #define RCAR_VIN_BT656			(1 << 3)
 #define RCAR_VIN_CSI2			(1 << 4)
+#define RCAR_VIN_ISP			(1 << 5)
 
 static int lut_reverse;
 module_param(lut_reverse, int, 0644);
@@ -1234,6 +1236,9 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 			vnmc |= VNMC_SCLE;
 	}
 
+	if (priv->pdata_flags & RCAR_VIN_ISP)
+		vnmc |= VNMC_ISPE;
+
 	/* progressive or interlaced mode */
 	interrupts = progressive ? VNIE_FIE : VNIE_EFE;
 
@@ -2022,6 +2027,9 @@ static int rcar_vin_set_bus_param(struct soc_camera_device *icd)
 		else
 			vnmc |= VNMC_DPINE;
 	}
+
+	if (priv->pdata_flags & RCAR_VIN_ISP)
+		vnmc |= VNMC_ISPE;
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
 	    priv->chip == RCAR_M3N || priv->chip == RCAR_V3M ||
@@ -3098,6 +3106,9 @@ static int rcar_vin_probe(struct platform_device *pdev)
 	}
 
 	of_node_put(np);
+
+	if (of_property_read_bool(np, "isp,enable"))
+		pdata_flags = RCAR_VIN_ISP;
 
 	dev_dbg(&pdev->dev, "pdata_flags = %08x\n", pdata_flags);
 
