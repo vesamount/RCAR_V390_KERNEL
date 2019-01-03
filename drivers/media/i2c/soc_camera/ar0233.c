@@ -20,12 +20,12 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "ar0233.h"
+#include "ar0233_rev2.h"
 
 static const int ar0233_i2c_addr[] = {0x10, 0x20};
 
 #define AR0233_PID		0x3000
-#define AR0233_VERSION_REG	0x0354
+#define AR0233_VERSION_REG	0x0956
 
 #define AR0233_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
 
@@ -404,23 +404,10 @@ static int ar0233_initialize(struct i2c_client *client)
 		goto err;
 	}
 
-	/* setup XCLK */
-	tmp_addr = client->addr;
-	if (priv->ti9x4_addr) {
-		/* CLK_OUT=22.5792*160*M/N/CLKDIV -> CLK_OUT=27MHz: CLKDIV=2, M=15, N=251: 22.5792*160/8*15/251=26.987MHz=CLK_OUT */
-		client->addr = priv->ti9x3_addr;			/* Serializer I2C address */
-#if 0
-		reg8_write(client, 0x06, 0x6f);				/* Set CLKDIV and M */
-		reg8_write(client, 0x07, 0xfb);				/* Set N */
-#endif
-		reg8_write(client, 0x0e, 0xf0);				/* Enable all remote gpios */
-	}
-	client->addr = tmp_addr;
-
 	/* Read OTP IDs */
 	ar0233_otp_id_read(client);
 	/* Program wizard registers */
-	ar0233_set_regs(client, ar0233_regs_wizard, ARRAY_SIZE(ar0233_regs_wizard));
+	ar0233_set_regs(client, ar0233_regs_wizard_rev2, ARRAY_SIZE(ar0233_regs_wizard_rev2));
 
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
