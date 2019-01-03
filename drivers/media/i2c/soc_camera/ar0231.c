@@ -20,9 +20,9 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "ar0231.h"
+#include "ar0231_rev7.h"
 
-#define AR0231_I2C_ADDR		0x10
+static const int ar0231_i2c_addr[] = {0x10, 0x20};
 
 #define AR0231_PID		0x3000
 #define AR0231_VERSION_REG	0x0354
@@ -39,6 +39,8 @@ struct ar0231_priv {
 	/* serializers */
 	int				max9286_addr;
 	int				max9271_addr;
+	int				ti9x4_addr;
+	int				ti9x3_addr;
 	int				port;
 	int				gpio_resetb;
 	int				gpio_fsin;
@@ -84,6 +86,25 @@ static int ar0231_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	return 0;
 }
+
+static int ar0231_set_window(struct v4l2_subdev *sd)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct ar0231_priv *priv = to_ar0231(client);
+
+	dev_err(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
+
+	/* horiz crop start */
+	reg16_write16(client, 0x3004, priv->rect.left);
+	/* horiz crop end */
+	reg16_write16(client, 0x3008, priv->rect.left + priv->rect.width - 1);
+	/* vert crop start */
+	reg16_write16(client, 0x3002, priv->rect.top);
+	/* vert crop end */
+	reg16_write16(client, 0x3006, priv->rect.top + priv->rect.height + 1);
+
+	return 0;
+};
 
 static int ar0231_get_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
@@ -173,6 +194,8 @@ static int ar0231_set_selection(struct v4l2_subdev *sd,
 	priv->rect.top = rect->top;
 	priv->rect.width = rect->width;
 	priv->rect.height = rect->height;
+
+	ar0231_set_window(sd);
 
 	return 0;
 }
@@ -372,9 +395,29 @@ static int ar0231_initialize(struct i2c_client *client)
 	u16 val = 0;
 	u16 pid = 0;
 	int ret = 0;
+	int tmp_addr;
+	int i;
 
-	/* check and show model ID */
-	reg16_read16(client, AR0231_PID, &pid);
+	for (i = 0; i < ARRAY_SIZE(ar0231_i2c_addr); i++) {
+		tmp_addr = client->addr;
+		if (priv->ti9x4_addr) {
+			client->addr = priv->ti9x4_addr;		/* Deserializer I2C address */
+			reg8_write(client, 0x5d, ar0231_i2c_addr[i] << 1); /* Sensor native I2C address */
+			usleep_range(2000, 2500);			/* wait 2ms */
+		}
+		if (priv->max9286_addr) {
+			client->addr = priv->max9271_addr;		/* Serializer I2C address */
+			reg8_write(client, 0x0a, ar0231_i2c_addr[i] << 1); /* Sensor native I2C address */
+			usleep_range(2000, 2500);			/* wait 2ms */
+		};
+		client->addr = tmp_addr;
+
+		/* check model ID */
+		reg16_read16(client, AR0231_PID, &pid);
+
+		if (pid == AR0231_VERSION_REG)
+			break;
+	}
 
 	if (pid != AR0231_VERSION_REG) {
 		dev_dbg(&client->dev, "Product ID error %x\n", pid);
@@ -382,16 +425,15 @@ static int ar0231_initialize(struct i2c_client *client)
 		goto err;
 	}
 
-	/* Program wizard registers */
-	ar0231_set_regs(client, ar0231_regs_wizard_rev4, ARRAY_SIZE(ar0231_regs_wizard_rev4));
-
-	/* Enable stream */
-	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
-	val |= (1 << 2);			// Set streamOn bit
-	reg16_write16(client, 0x301a, val);	// Start Streaming
-
 	/* Read OTP IDs */
 	ar0231_otp_id_read(client);
+	/* Program wizard registers */
+	ar0231_set_regs(client, ar0231_regs_wizard_rev7, ARRAY_SIZE(ar0231_regs_wizard_rev7));
+
+	/* Enable stream */
+	reg16_read16(client, 0x301a, &val);
+	val |= (1 << 2);
+	reg16_write16(client, 0x301a, val);
 
 	dev_info(&client->dev, "ar0231 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
 		 pid, AR0231_MAX_WIDTH, AR0231_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
@@ -419,13 +461,19 @@ static int ar0231_parse_dt(struct device_node *np, struct ar0231_priv *priv)
 		if (!of_property_read_u32(rendpoint, "max9271-addr", &priv->max9271_addr) &&
 		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->max9286_addr) &&
 		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
-		    break;
+			break;
+
+		if (!of_property_read_u32(rendpoint, "ti9x3-addr", &priv->ti9x3_addr) &&
+		    !of_property_match_string(rendpoint->parent->parent, "compatible", "ti,ti9x4") &&
+		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->ti9x4_addr) &&
+		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
+			break;
 	}
 
 	of_node_put(endpoint);
 
-	if (!priv->max9286_addr) {
-		dev_err(&client->dev, "deserializer does not present\n");
+	if (!priv->ti9x4_addr && !priv->max9286_addr) {
+		dev_dbg(&client->dev, "deserializer does not present\n");
 		return -EINVAL;
 	}
 
@@ -437,12 +485,16 @@ static int ar0231_parse_dt(struct device_node *np, struct ar0231_priv *priv)
 		client->addr = priv->max9271_addr;			/* Serializer I2C address */
 
 		reg8_write(client, 0x09, tmp_addr << 1);		/* Sensor translated I2C address */
-		reg8_write(client, 0x0A, AR0231_I2C_ADDR << 1);		/* Sensor native I2C address */
 		usleep_range(2000, 2500);				/* wait 2ms */
 	};
-	client->addr = tmp_addr;
+	if (priv->ti9x4_addr) {
+		client->addr = priv->ti9x4_addr;			/* Deserializer I2C address */
 
-	mdelay(10);
+		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
+		usleep_range(2000, 2500);				/* wait 2ms */
+		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
+	}
+	client->addr = tmp_addr;
 
 	return 0;
 }

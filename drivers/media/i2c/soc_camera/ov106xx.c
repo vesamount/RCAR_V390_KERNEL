@@ -51,6 +51,12 @@ static int ov106xx_probe(struct i2c_client *client,
 	int ret;
 	chip_id = -EINVAL;
 
+	ret = ar0231_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0231;
+		goto out;
+	}
+
 	ret = ar0233_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0233;
@@ -102,12 +108,6 @@ static int ov106xx_probe(struct i2c_client *client,
 	ret = ar0323_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0323;
-		goto out;
-	}
-
-	ret = ar0231_probe(client, did);
-	if (!ret) {
-		chip_id = ID_AR0231;
 		goto out;
 	}
 
