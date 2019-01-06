@@ -279,8 +279,7 @@ static int ti9x4_initialize(struct i2c_client *client)
 {
 	struct ti9x4_priv *priv = i2c_get_clientdata(client);
 	int idx, timeout;
-	u8 port_sts1 = 0, port_sts2 = 0;
-	int tmp_addr;
+	u8 port_sts1[4] = {0, 0, 0, 0}, port_sts2[4] = {0, 0, 0, 0};
 
 	dev_info(&client->dev, "LINKs=%d, LANES=%d, FORWARDING=%s, CABLE=%s, ID=%s\n",
 			       priv->links, priv->lanes, priv->forwarding_mode, priv->is_coax ? "coax" : "stp", priv->chip_id);
@@ -301,29 +300,35 @@ static int ti9x4_initialize(struct i2c_client *client)
 	/* check lock status */
 	for (timeout = 500 / priv->links; timeout > 0; timeout--) {
 		for (idx = 0; idx < priv->links; idx++) {
+			if ((port_sts1[idx] & 0x1) && (port_sts2[idx] & 0x4))
+				continue;
+
 			reg8_write(client, 0x4c, (idx << 4) | (1 << idx));	/* Select RX port number */
 			usleep_range(1000, 1500);				/* wait 1ms */
-			reg8_read(client, 0x4d, &port_sts1);			/* Lock status */
-			reg8_read(client, 0x4e, &port_sts2);			/* Freq stable */
-
-			if (port_sts1 & 0x1) {
-				tmp_addr = client->addr;
-				client->addr = priv->ti9x3_addr_map[idx];	/* TI9X3 I2C addr */
-				reg8_write(client, 0x0d, 0xf0);			/* Enable all remote GPIOs */
-				reg8_write(client, 0x0e, 0xf0);			/* Enable serializer GPIOs */
-				client->addr = tmp_addr;
-			}
-
-			if ((port_sts1 & 0x1) && (port_sts2 & 0x4))
-				goto out;
+			reg8_read(client, 0x4d, &port_sts1[idx]);		/* Lock status */
+			reg8_read(client, 0x4e, &port_sts2[idx]);		/* Freq stable */
 		}
 	}
 
 	if (!timeout)
-		dev_info(&client->dev, "Receiver is not locked\n");
-out:
+		dev_info(&client->dev, "Receiver lock status [%d,%d,%d,%d]\n",
+				       (port_sts1[0] & 0x1) && (port_sts2[0] & 0x4),
+				       (port_sts1[1] & 0x1) && (port_sts2[1] & 0x4),
+				       (port_sts1[2] & 0x1) && (port_sts2[2] & 0x4),
+				       (port_sts1[3] & 0x1) && (port_sts2[3] & 0x4));
+
 	if (priv->poc_delay)
 		mdelay(100);
+
+	for (idx = 0; idx < priv->links; idx++) {
+		reg8_write(client, 0x4c, (idx << 4) | (1 << idx));		/* Select RX port number */
+		usleep_range(1000, 1500);					/* wait 1ms */
+
+		client->addr = priv->ti9x3_addr_map[idx];			/* TI9X3 I2C addr */
+		reg8_write(client, 0x0d, 0xf0);					/* Enable all remote GPIOs */
+		reg8_write(client, 0x0e, 0xf0);					/* Enable serializer GPIOs */
+		client->addr = priv->des_addr;
+	}
 
 	return 0;
 }
