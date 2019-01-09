@@ -20,11 +20,12 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "ar0233_rev2.h"
+#include "ar0233.h"
 
 static const int ar0233_i2c_addr[] = {0x10, 0x20};
 
 #define AR0233_PID		0x3000
+#define AR0233_REV		0x300E
 #define AR0233_VERSION_REG	0x0956
 
 #define AR0233_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
@@ -377,7 +378,7 @@ static int ar0233_initialize(struct i2c_client *client)
 {
 	struct ar0233_priv *priv = to_ar0233(client);
 	u16 val = 0;
-	u16 pid = 0;
+	u16 pid = 0, rev = 0;
 	int ret = 0;
 	int tmp_addr;
 	int i;
@@ -404,18 +405,26 @@ static int ar0233_initialize(struct i2c_client *client)
 		goto err;
 	}
 
+	/* check revision  */
+	reg16_read16(client, AR0233_REV, &rev);
 	/* Read OTP IDs */
 	ar0233_otp_id_read(client);
 	/* Program wizard registers */
-	ar0233_set_regs(client, ar0233_regs_wizard_rev2, ARRAY_SIZE(ar0233_regs_wizard_rev2));
+	switch (rev) {
+	case 0x2015:
+		ar0233_set_regs(client, ar0233_regs_wizard_rev2, ARRAY_SIZE(ar0233_regs_wizard_rev2));
+		break;
+	default:
+		ar0233_set_regs(client, ar0233_regs_wizard_rev1, ARRAY_SIZE(ar0233_regs_wizard_rev1));
+	}
 
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
 
-	dev_info(&client->dev, "ar0233 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0233 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	return ret;
 }

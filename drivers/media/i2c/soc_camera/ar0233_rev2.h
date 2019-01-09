@@ -9,27 +9,6 @@
  * option) any later version.
  */
 
-//#define AR0233_DISPLAY_PATTERN_FIXED
-//#define AR0233_DISPLAY_PATTERN_COLOR_BAR
-
-#define AR0233_MAX_WIDTH	2048
-#define AR0233_MAX_HEIGHT	1280
-
-#define AR0233_DELAY		0xffff
-
-#define AR0233_SENSOR_WIDTH	2058
-#define AR0233_SENSOR_HEIGHT	1284
-
-#define AR0233_X_START		((AR0233_SENSOR_WIDTH - AR0233_MAX_WIDTH) / 2)
-#define AR0233_Y_START		((AR0233_SENSOR_HEIGHT - AR0233_MAX_HEIGHT) / 2)
-#define AR0233_X_END		(AR0233_X_START + AR0233_MAX_WIDTH - 1)
-#define AR0233_Y_END		(AR0233_Y_START + AR0233_MAX_HEIGHT - 1)
-
-struct ar0233_reg {
-	u16	reg;
-	u16	val;
-};
-
 #define O1_Recommended_Defaults_LFM_HDR
 #ifdef O1_Recommended_Defaults_LFM_HDR
  #define Design_recommended_settings_REV2_V9
