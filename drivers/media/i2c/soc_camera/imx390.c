@@ -249,6 +249,7 @@ static int imx390_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct imx390_priv *priv = to_imx390(client);
 	int ret = -EINVAL;
 	int val;
+	uint8_t val8;
 
 	if (!priv->init_complete)
 		return 0;
@@ -264,11 +265,29 @@ static int imx390_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_GAIN:
 		/* Digital gain */
-		ret = 0;
+		/* Set PGA_GAIN_SP1H as Normal SP1 HCG mode is configured in wizard */
+		val8 = ctrl->val & 0xff;
+		ret = reg16_write(client, 0x24, val8);
+#if 0 // stubs for other normal modes and HDR
+		/* Set PGA_GAIN_SP1L as Normal SP1 LCG mode is configured in wizard */
+		val8 = ctrl->val & 0xff;
+		ret = reg16_write(client, 0x26, val8);
+
+		/* Set PGA_GAIN_SP2 as Normal SP2 mode is configured in wizard */
+		val8 = ctrl->val & 0xff;
+		ret = reg16_write(client, 0x28, val8);
+#endif
 		break;
 	case V4L2_CID_ANALOGUE_GAIN:
 		/* Analog gain */
-		ret = 0;
+		/* Set AGAIN_SP1H as Normal SP1 HCG mode is configured in wizard */
+		val8 = ctrl->val & 0xff;
+		ret = reg16_write(client, 0x18, val8);
+#if 0 // stubs for other normal modes and HDR
+		/* Set AGAIN_SP1L as Normal SP1 LCG mode is configured in wizard */
+		val8 = ctrl->val & 0xff;
+		ret = reg16_write(client, 0x1A, val8);
+#endif
 		break;
 	case V4L2_CID_EXPOSURE:
 		val = 0xfff - ctrl->val;
@@ -277,7 +296,38 @@ static int imx390_s_ctrl(struct v4l2_ctrl *ctrl)
 //		ret |= reg16_write(client, 0x0e, ctrl->val >> 16); /* MSB */
 		break;
 	case V4L2_CID_HFLIP:
+		/* hflip */
+		ret = reg16_read(client, 0x74, &val8);
+		if (ctrl->val)
+			val8 |= (1 << 1);
+		else
+			val8 &= ~(1 << 1);
+		ret |= reg16_write(client, 0x74, val8);
+
+		/* hflip app lock */
+		ret = reg16_read(client, 0x3c0, &val8);
+		if (ctrl->val)
+			val8 |= (1 << 3);
+		else
+			val8 &= ~(1 << 3);
+		ret |= reg16_write(client, 0x3c0, val8);
+		break;
 	case V4L2_CID_VFLIP:
+		/* vflip */
+		ret = reg16_read(client, 0x74, &val8);
+		if (ctrl->val)
+			val8 |= (1 << 0);
+		else
+			val8 &= ~(1 << 0);
+		ret |= reg16_write(client, 0x74, val8);
+
+		/* vflip app lock */
+		ret = reg16_read(client, 0x3c0, &val8);
+		if (ctrl->val)
+			val8 |= (1 << 2);
+		else
+			val8 &= ~(1 << 2);
+		ret |= reg16_write(client, 0x3c0, val8);
 		break;
 	}
 
@@ -452,7 +502,7 @@ static int imx390_probe(struct i2c_client *client,
 	priv->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	priv->exposure = 0x100;
-	priv->gain = 0x100;
+	priv->gain = 0;
 	priv->autogain = 1;
 	v4l2_ctrl_handler_init(&priv->hdl, 4);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
@@ -470,13 +520,13 @@ static int imx390_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
 			  V4L2_CID_AUTOGAIN, 0, 1, 1, priv->autogain);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
-			  V4L2_CID_GAIN, 0, 0xffff, 1, priv->gain);
+			  V4L2_CID_GAIN, 0, 140, 1, priv->gain);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
-			  V4L2_CID_ANALOGUE_GAIN, 1, 0xe, 1, 0x7);
+			  V4L2_CID_ANALOGUE_GAIN, 0, 100, 1, 0x15);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
 			  V4L2_CID_EXPOSURE, 0, 0xff0, 1, 0xfff - 0x2f2);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
-			  V4L2_CID_HFLIP, 0, 1, 1, 1);
+			  V4L2_CID_HFLIP, 0, 1, 1, 0);
 	v4l2_ctrl_new_std(&priv->hdl, &imx390_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	priv->sd.ctrl_handler = &priv->hdl;
