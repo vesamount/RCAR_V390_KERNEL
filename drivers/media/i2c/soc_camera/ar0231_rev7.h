@@ -9,27 +9,6 @@
  * option) any later version.
  */
 
-//#define AR0231_DISPLAY_PATTERN_FIXED
-//#define AR0231_DISPLAY_PATTERN_COLOR_BAR
-
-#define AR0231_MAX_WIDTH	1920
-#define AR0231_MAX_HEIGHT	1200
-
-#define AR0231_DELAY		0xffff
-
-#define AR0231_SENSOR_WIDTH	1928
-#define AR0231_SENSOR_HEIGHT	1208
-
-#define AR0231_X_START		((AR0231_SENSOR_WIDTH - AR0231_MAX_WIDTH) / 2)
-#define AR0231_Y_START		((AR0231_SENSOR_HEIGHT - AR0231_MAX_HEIGHT) / 2)
-#define AR0231_X_END		(AR0231_X_START + AR0231_MAX_WIDTH - 1)
-#define AR0231_Y_END		(AR0231_Y_START + AR0231_MAX_HEIGHT - 1)
-
-struct ar0231_reg {
-	u16	reg;
-	u16	val;
-};
-
 /* 3Exp HDR Full Resolution Mode MIPI 4lane 12bit 30FPS, XCLK=27MHz */
 static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 {0x301A, 0x18}, // MIPI, stream OFF
@@ -322,12 +301,14 @@ static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 #endif /* Sensor Setup */
 
 #if 1 /* Serial 12-bit Timing Setup */
-{0x302A, 6},  // vt_pix_clk_div
-{0x302C, 1},  // vt_sys_clk_div
+/* PCLK=27Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 *2 */
+/* PCLK=27Mhz/2 *44/1/12 *2= 99Mhz - TI serializers */
+{0x302A, 6},  // vt_pix_clk_div  (P2 divider)
+{0x302C, 1},  // vt_sys_clk_div (P1 divider)
 {0x302E, 2},  // pre_pll_clk_div
 {0x3030, 44}, // pll_multiplier
-{0x3036, 12}, // op_word_clk_div
-{0x3038, 1},  // op_sys_clk_div
+{0x3036, 12}, // op_word_clk_div (P4 divider)
+{0x3038, 1},  // op_sys_clk_div (P3 divider)
 {0x30B0, 0x800}, // digital_test: pll_complete_bypass=0
 #endif /* Serial 12-bit Timing Setup */
 
@@ -415,4 +396,50 @@ static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 //{0x30DC, 0x0120}, // TRIGGER_DELAY
 {0x301A, 0x0118}, // GPI pins enable
 #endif
+};
+
+/* 3Exp HDR Full Resolution Mode Parallel 12bit 30FPS, XCLK=24MHz */
+static const struct ar0231_reg ar0231_regs_wizard_rev7_dvp[] = {
+#if 1 /* Parallel Timing Setup */
+/* PCLK=24Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 */
+/* PCLK=24Mhz/3 *88/1/8 = 88Mhz - TI serializers */
+{0x302A, 8}, // vt_pix_clk_div (P2 divider)
+{0x302C, 1}, // vt_sys_clk_div (P1 divider)
+{0x302E, 3}, // pre_pll_clk_div
+{0x3030, 88}, // pll_multiplier
+{0x3036, 8}, // op_word_clk_div (P4 divider)
+{0x3038, 1}, // op_sys_clk_div (P3 divider)
+{0x30B0, 0x800}, // digital_test: pll_complete_bypass=0
+#endif
+
+#if 1 /* 3exp Timing and Exposure - Parallel */
+{0x3082, 0x8}, // operation_mode_ctrl
+{0x30BA, 0x11E2}, // digital_ctrl: num_exp_max=2
+
+/* Row and Pixel Timing */
+#if 1
+{0x300A, AR0231_SENSOR_HEIGHT + 225}, // frame_length_lines_
+{0x300C, AR0231_SENSOR_WIDTH + 120}, // line_length_pck_
+#else
+{0x300C, 1978}, // line_length_pck_
+{0x300A, 1482}, // frame_length_lines_
+#endif
+{0x3042, 0}, // extra_delay
+
+/* Exposure Settings */
+//{0x3238, 0x222}, // exposure_ratio
+//{0x3012, 355}, // coarse_integration_time_
+{0x3014, 2178}, // fine_integration_time_
+{0x321E, 2178}, // fine_integration_time2
+{0x3222, 2178}, // fine_integration_time3
+{0x30B0, 0x800}, // digital_test: set bit11
+{0x32EA, 0x3C0E},
+{0x32EC, 0x72A1},
+#endif /* 3exp Timing and Exposure - Parallel */
+
+#if 1 /* Parallel HDR 12 bit Output */
+{0x31AE, 0x001}, // serial_format:
+#endif
+
+{0x301A, 0x01d8}, // RESET_REGISTER parallel pins enable
 };

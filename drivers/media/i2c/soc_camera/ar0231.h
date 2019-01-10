@@ -12,8 +12,8 @@
 //#define AR0231_DISPLAY_PATTERN_FIXED
 //#define AR0231_DISPLAY_PATTERN_COLOR_BAR
 
-#define AR0231_MAX_WIDTH	1928
-#define AR0231_MAX_HEIGHT	1208
+#define AR0231_MAX_WIDTH	1920
+#define AR0231_MAX_HEIGHT	1200
 
 #define AR0231_DELAY		0xffff
 
@@ -31,4 +31,5 @@ struct ar0231_reg {
 };
 
 #include "ar0231_rev4.h"
-//#include "ar0231_rev6.h"
+#include "ar0231_rev6.h"
+#include "ar0231_rev7.h"

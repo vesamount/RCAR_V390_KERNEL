@@ -20,11 +20,12 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "ar0231_rev7.h"
+#include "ar0231.h"
 
 static const int ar0231_i2c_addr[] = {0x10, 0x20};
 
 #define AR0231_PID		0x3000
+#define AR0231_REV		0x300E
 #define AR0231_VERSION_REG	0x0354
 
 #define AR0231_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
@@ -393,7 +394,7 @@ static int ar0231_initialize(struct i2c_client *client)
 {
 	struct ar0231_priv *priv = to_ar0231(client);
 	u16 val = 0;
-	u16 pid = 0;
+	u16 pid = 0, rev = 0;
 	int ret = 0;
 	int tmp_addr;
 	int i;
@@ -425,18 +426,23 @@ static int ar0231_initialize(struct i2c_client *client)
 		goto err;
 	}
 
+	/* check revision  */
+	reg16_read16(client, AR0231_REV, &rev);
 	/* Read OTP IDs */
 	ar0231_otp_id_read(client);
 	/* Program wizard registers */
-	ar0231_set_regs(client, ar0231_regs_wizard_rev7, ARRAY_SIZE(ar0231_regs_wizard_rev7));
+	if (priv->ti9x4_addr)
+		ar0231_set_regs(client, ar0231_regs_wizard_rev7, ARRAY_SIZE(ar0231_regs_wizard_rev7));
+	if (priv->max9286_addr)
+		ar0231_set_regs(client, ar0231_regs_wizard_rev6_dvp, ARRAY_SIZE(ar0231_regs_wizard_rev6_dvp));
 
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);
 	val |= (1 << 2);
 	reg16_write16(client, 0x301a, val);
 
-	dev_info(&client->dev, "ar0231 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, AR0231_MAX_WIDTH, AR0231_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0231 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0231_MAX_WIDTH, AR0231_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	ar0231_s_port(client, 0);
 	return ret;
