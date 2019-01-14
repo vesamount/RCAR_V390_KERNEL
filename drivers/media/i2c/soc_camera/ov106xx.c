@@ -10,6 +10,7 @@
  */
 
 #include "ov10635.c"
+#include "ov10640.c"
 #include "ov490_ov10640.c"
 #include "ov495_ov2775.c"
 #include "ar0132.c"
@@ -28,6 +29,7 @@
 
 static enum {
 	ID_OV10635,
+	ID_OV10640,
 	ID_OV490_OV10640,
 	ID_OV495_OV2775,
 	ID_AR0132,
@@ -60,6 +62,12 @@ static int ov106xx_probe(struct i2c_client *client,
 	ret = ar0233_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0233;
+		goto out;
+	}
+
+	ret = ov10640_probe(client, did);
+	if (!ret) {
+		chip_id = ID_OV10640;
 		goto out;
 	}
 
@@ -159,6 +167,9 @@ static int ov106xx_remove(struct i2c_client *client)
 	case ID_OV10635:
 		ov10635_remove(client);
 		break;
+	case ID_OV10640:
+		ov10640_remove(client);
+		break;
 	case ID_OV490_OV10640:
 		ov490_remove(client);
 		break;
@@ -233,6 +244,6 @@ static struct i2c_driver ov106xx_i2c_driver = {
 
 module_i2c_driver(ov106xx_i2c_driver);
 
-MODULE_DESCRIPTION("SoC Camera driver for OV10635, OV490+OV10640, OV495+OV2775, AR0132/140/143/220/223/323, AP0101+AR014X");
+MODULE_DESCRIPTION("SoC Camera driver for OV10635/10640/OV490/OV495, AR0132/140/143/220/223/323, AP0101");
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_LICENSE("GPL");
