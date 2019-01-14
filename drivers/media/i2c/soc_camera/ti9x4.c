@@ -325,8 +325,15 @@ static int ti9x4_initialize(struct i2c_client *client)
 		usleep_range(1000, 1500);					/* wait 1ms */
 
 		client->addr = priv->ti9x3_addr_map[idx];			/* TI9X3 I2C addr */
-		reg8_write(client, 0x0d, 0xf0);					/* Enable all remote GPIOs */
-		reg8_write(client, 0x0e, 0xf0);					/* Enable serializer GPIOs */
+		switch (priv->ser_id) {
+		case TI913_ID:
+			reg8_write(client, 0x0d, 0x55);				/* Enable remote GPIO0/1 */
+			break;
+		case TI953_ID:
+			reg8_write(client, 0x0d, 0xf0);				/* Enable all remote GPIOs */
+			reg8_write(client, 0x0e, 0xf0);				/* Enable serializer GPIOs */
+			break;
+		}
 		client->addr = priv->des_addr;
 	}
 
