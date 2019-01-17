@@ -21,6 +21,10 @@
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
+
+#define V4L2_EVENT_SOC_START_STREAM	(V4L2_EVENT_PRIVATE_START + 1)
+#define V4L2_EVENT_SOC_PRIVATE_START	(V4L2_EVENT_PRIVATE_START + 1)
 
 struct file;
 struct soc_camera_desc;

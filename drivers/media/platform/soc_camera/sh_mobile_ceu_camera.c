@@ -1555,7 +1555,7 @@ static int sh_mobile_ceu_set_liveselection(struct soc_camera_device *icd,
 
 static unsigned int sh_mobile_ceu_poll(struct file *file, poll_table *pt)
 {
-	struct soc_camera_device *icd = file->private_data;
+	struct soc_camera_device *icd = video_drvdata(file);
 
 	return vb2_poll(&icd->vb2_vidq, file, pt);
 }
