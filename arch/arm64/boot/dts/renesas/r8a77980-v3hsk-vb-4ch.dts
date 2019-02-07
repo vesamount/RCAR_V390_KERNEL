@@ -324,7 +324,7 @@
 				clock-names = "clk_in";
 
 				assigned-clocks = <&cs2300>;
-				assigned-clock-rates = <23500000>;
+				assigned-clock-rates = <23000000>;
 			};
 		};
 

@@ -115,7 +115,7 @@
 		csi40_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
-			csi-rate = <1450>;
+			csi-rate = <1500>;
 		};
 	};
 };
@@ -130,7 +130,7 @@
 		csi41_ep: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2 3 4>;
-			csi-rate = <1450>;
+			csi-rate = <1500>;
 		};
 	};
 };
@@ -267,7 +267,7 @@
 				};
 				port@1 {
 					ti9x4_csi0ep0: endpoint {
-						csi-rate = <1450>;
+						csi-rate = <1500>;
 						remote-endpoint = <&csi40_ep>;
 					};
 				};
@@ -425,7 +425,7 @@
 				};
 				port@1 {
 					ti9x4_csi1ep0: endpoint {
-						csi-rate = <1450>;
+						csi-rate = <1500>;
 						remote-endpoint = <&csi41_ep>;
 					};
 				};
@@ -447,7 +447,7 @@
 				clock-names = "clk_in";
 
 				assigned-clocks = <&cs2300>;
-				assigned-clock-rates = <22500000>;
+				assigned-clock-rates = <23000000>;
 			};
 
 			gpio_exp_ch1: gpio_ch1@6c {
