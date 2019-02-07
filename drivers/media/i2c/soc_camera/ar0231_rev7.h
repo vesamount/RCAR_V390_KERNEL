@@ -301,14 +301,14 @@ static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 #endif /* Sensor Setup */
 
 #if 1 /* Serial 12-bit Timing Setup */
-/* PCLK=27Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 *2 */
-/* PCLK=27Mhz/2 *44/1/12 *2= 99Mhz - TI serializers */
-{0x302A, 6},  // vt_pix_clk_div  (P2 divider)
-{0x302C, 1},  // vt_sys_clk_div (P1 divider)
+/* PCLK=24Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 *2 */
+/* PCLK=24Mhz/2 *44/1/12 *2= 88Mhz - TI serializers */
 {0x302E, 2},  // pre_pll_clk_div
 {0x3030, 44}, // pll_multiplier
-{0x3036, 12}, // op_word_clk_div (P4 divider)
+{0x302C, 1},  // vt_sys_clk_div (P1 divider)
+{0x302A, 6},  // vt_pix_clk_div  (P2 divider)
 {0x3038, 1},  // op_sys_clk_div (P3 divider)
+{0x3036, 12}, // op_word_clk_div (P4 divider)
 {0x30B0, 0x800}, // digital_test: pll_complete_bypass=0
 #endif /* Serial 12-bit Timing Setup */
 
@@ -384,7 +384,7 @@ static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 {0x31BC, 0x805},
 #endif /* MIPI 12 bit Settings */
 
-/* FPS = 124.5MHz / reg0x300A / reg0x300C * (DES_XTAL/27MHz), DES_XTAL=23.5MHz */
+/* FPS = 105MHz / reg0x300A / reg0x300C * (DES_XTAL/27MHz), DES_XTAL=23.5MHz */
 {0x300A, AR0231_SENSOR_HEIGHT + 100}, // Frame_length_Lines
 {0x300C, AR0231_SENSOR_WIDTH + 550}, // Line_length_pck
 {0x3012, 0x144}, //Integration_time
