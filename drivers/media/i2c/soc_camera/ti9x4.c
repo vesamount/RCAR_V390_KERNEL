@@ -144,7 +144,7 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 	reg8_write(client, 0x0d, 0xb9);				/* VDDIO 3.3V */
 	switch (priv->csi_rate) {
 	case 1600: /* REFCLK = 25MHZ */
-	case 1500: /* REFCLK = 23.5MHZ */
+	case 1500: /* REFCLK = 23MHZ */
 	case 1450: /* REFCLK = 22.5MHZ */
 		reg8_write(client, 0x1f, 0x00);			/* CSI rate 1.5/1.6Gbps */
 		break;
@@ -173,8 +173,8 @@ static void ti9x4_initial_setup(struct i2c_client *client)
 		fs_time = 2790;
 		break;
 	case 1500:
-		/* FrameSync setup for REFCLK=23.5MHz, FPS=30: period_counts=1/FPS/12.766mks=1/30/12.766e-6=2612 -> HI=2, LO=2610 */
-		fs_time = 2625;
+		/* FrameSync setup for REFCLK=23MHz, FPS=30: period_counts=1/FPS/13.043mks=1/30/13.043e-6=2556 -> HI=2, LO=2554 */
+		fs_time = 2570;
 		break;
 	case 1450:
 	case 1100:
