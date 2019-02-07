@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor isx016 sensor camera wizard 1280x800@30/UYVY/BT601/8bit
+ * ON Semiconductor isx019 (isp) camera wizard 1280x800@30/UYVY/BT601/8bit
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -9,19 +9,19 @@
  * option) any later version.
  */
 
-#define ISX016_MAX_WIDTH	1280
-#define ISX016_MAX_HEIGHT	800
+#define ISX019_MAX_WIDTH	1280
+#define ISX019_MAX_HEIGHT	800
 
-#define ISX016_DELAY		0xffff
+#define ISX019_DELAY		0xffff
 
-struct isx016_reg {
+struct isx019_reg {
 	u16	reg;
 	u16	val;
 };
 
-static const struct isx016_reg isx016_regs_wizard[] = {
+static const struct isx019_reg isx019_regs_wizard[] = {
 #if 0
 /* enable FSIN */
 #endif
-{ISX016_DELAY, 100},
+{ISX019_DELAY, 100},
 };

@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor ISX016 sensor camera driver
+ * ON Semiconductor ISX019 (isp) camera driver
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -20,18 +20,18 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#include "isx016.h"
+#include "isx019.h"
 
-static const int isx016_i2c_addr[] = {0x1a};
+static const int isx019_i2c_addr[] = {0x1a};
 
-#define ISX016_PID		0x0000
-#define ISX016_VERSION_REG	0x0740
+#define ISX019_PID		0x0000
+#define ISX019_VERSION_REG	0x0740
 
-#define ISX016_MEDIA_BUS_FMT	MEDIA_BUS_FMT_YUYV8_2X8
+#define ISX019_MEDIA_BUS_FMT	MEDIA_BUS_FMT_YUYV8_2X8
 
-static void isx016_otp_id_read(struct i2c_client *client);
+static void isx019_otp_id_read(struct i2c_client *client);
 
-struct isx016_priv {
+struct isx019_priv {
 	struct v4l2_subdev		sd;
 	struct v4l2_ctrl_handler	hdl;
 	struct media_pad		pad;
@@ -51,14 +51,14 @@ struct isx016_priv {
 	int				gpio_fsin;
 };
 
-static inline struct isx016_priv *to_isx016(const struct i2c_client *client)
+static inline struct isx019_priv *to_isx019(const struct i2c_client *client)
 {
-	return container_of(i2c_get_clientdata(client), struct isx016_priv, sd);
+	return container_of(i2c_get_clientdata(client), struct isx019_priv, sd);
 }
 
-static void isx016_s_port(struct i2c_client *client, int fwd_en)
+static void isx019_s_port(struct i2c_client *client, int fwd_en)
 {
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 	int tmp_addr;
 
 	if (priv->max9286_addr) {
@@ -70,7 +70,7 @@ static void isx016_s_port(struct i2c_client *client, int fwd_en)
 	};
 }
 
-static int isx016_read16(struct i2c_client *client, u8 category, u16 reg, u16 *val)
+static int isx019_read16(struct i2c_client *client, u8 category, u16 reg, u16 *val)
 {
 	int ret;
  #define R_NUM_BYTES		9
@@ -102,7 +102,7 @@ static int isx016_read16(struct i2c_client *client, u8 category, u16 reg, u16 *v
 	return ret < 0 ? ret : 0;
 }
 
-static int isx016_write16(struct i2c_client *client, u8 category, u16 reg, u16 val)
+static int isx019_write16(struct i2c_client *client, u8 category, u16 reg, u16 val)
 {
 	int ret;
  #define W_NUM_BYTES		10
@@ -129,55 +129,55 @@ static int isx016_write16(struct i2c_client *client, u8 category, u16 reg, u16 v
 	return ret < 0 ? ret : 0;
 }
 
-static int isx016_set_regs(struct i2c_client *client,
-			  const struct isx016_reg *regs, int nr_regs)
+static int isx019_set_regs(struct i2c_client *client,
+			  const struct isx019_reg *regs, int nr_regs)
 {
 	int i;
 
 	for (i = 0; i < nr_regs; i++) {
-		if (regs[i].reg == ISX016_DELAY) {
+		if (regs[i].reg == ISX019_DELAY) {
 			mdelay(regs[i].val);
 			continue;
 		}
 
-		isx016_write16(client, regs[i].reg >> 8, regs[i].reg & 0xff, regs[i].val);
+		isx019_write16(client, regs[i].reg >> 8, regs[i].reg & 0xff, regs[i].val);
 	}
 
 	return 0;
 }
 
-static int isx016_s_stream(struct v4l2_subdev *sd, int enable)
+static int isx019_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	return 0;
 }
 
-static int isx016_get_fmt(struct v4l2_subdev *sd,
+static int isx019_get_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
 			 struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *mf = &format->format;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 
 	if (format->pad)
 		return -EINVAL;
 
 	mf->width = priv->rect.width;
 	mf->height = priv->rect.height;
-	mf->code = ISX016_MEDIA_BUS_FMT;
+	mf->code = ISX019_MEDIA_BUS_FMT;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
 	return 0;
 }
 
-static int isx016_set_fmt(struct v4l2_subdev *sd,
+static int isx019_set_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_pad_config *cfg,
 			 struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *mf = &format->format;
 
-	mf->code = ISX016_MEDIA_BUS_FMT;
+	mf->code = ISX019_MEDIA_BUS_FMT;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
@@ -187,42 +187,42 @@ static int isx016_set_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int isx016_enum_mbus_code(struct v4l2_subdev *sd,
+static int isx019_enum_mbus_code(struct v4l2_subdev *sd,
 				struct v4l2_subdev_pad_config *cfg,
 				struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->pad || code->index > 0)
 		return -EINVAL;
 
-	code->code = ISX016_MEDIA_BUS_FMT;
+	code->code = ISX019_MEDIA_BUS_FMT;
 
 	return 0;
 }
 
-static int isx016_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+static int isx019_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 
-	isx016_otp_id_read(client);
+	isx019_otp_id_read(client);
 
 	memcpy(edid->edid, priv->id, 6);
 
 	edid->edid[6] = 0xff;
 	edid->edid[7] = client->addr;
-	edid->edid[8] = ISX016_VERSION_REG >> 8;
-	edid->edid[9] = ISX016_VERSION_REG & 0xff;
+	edid->edid[8] = ISX019_VERSION_REG >> 8;
+	edid->edid[9] = ISX019_VERSION_REG & 0xff;
 
 	return 0;
 }
 
-static int isx016_set_selection(struct v4l2_subdev *sd,
+static int isx019_set_selection(struct v4l2_subdev *sd,
 			       struct v4l2_subdev_pad_config *cfg,
 			       struct v4l2_subdev_selection *sel)
 {
 	struct v4l2_rect *rect = &sel->r;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 
 	if (sel->which != V4L2_SUBDEV_FORMAT_ACTIVE ||
 	    sel->target != V4L2_SEL_TGT_CROP)
@@ -245,12 +245,12 @@ static int isx016_set_selection(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int isx016_get_selection(struct v4l2_subdev *sd,
+static int isx019_get_selection(struct v4l2_subdev *sd,
 			       struct v4l2_subdev_pad_config *cfg,
 			       struct v4l2_subdev_selection *sel)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 
 	if (sel->which != V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EINVAL;
@@ -276,7 +276,7 @@ static int isx016_get_selection(struct v4l2_subdev *sd,
 	}
 }
 
-static int isx016_g_mbus_config(struct v4l2_subdev *sd,
+static int isx019_g_mbus_config(struct v4l2_subdev *sd,
 			       struct v4l2_mbus_config *cfg)
 {
 	cfg->flags = V4L2_MBUS_CSI2_1_LANE | V4L2_MBUS_CSI2_CHANNEL_0 |
@@ -287,14 +287,14 @@ static int isx016_g_mbus_config(struct v4l2_subdev *sd,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int isx016_g_register(struct v4l2_subdev *sd,
+static int isx019_g_register(struct v4l2_subdev *sd,
 			    struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	int ret;
 	u16 val = 0;
 
-	ret = isx016_read16(client, (u16)reg->reg >> 8, (u16)reg->reg & 0xff, &val);
+	ret = isx019_read16(client, (u16)reg->reg >> 8, (u16)reg->reg & 0xff, &val);
 	if (ret < 0)
 		return ret;
 
@@ -304,27 +304,27 @@ static int isx016_g_register(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int isx016_s_register(struct v4l2_subdev *sd,
+static int isx019_s_register(struct v4l2_subdev *sd,
 			    const struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	return isx016_write16(client, (u16)reg->reg >> 8, (u16)reg->reg & 0xff, (u16)reg->val);
+	return isx019_write16(client, (u16)reg->reg >> 8, (u16)reg->reg & 0xff, (u16)reg->val);
 }
 #endif
 
-static struct v4l2_subdev_core_ops isx016_core_ops = {
+static struct v4l2_subdev_core_ops isx019_core_ops = {
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-	.g_register = isx016_g_register,
-	.s_register = isx016_s_register,
+	.g_register = isx019_g_register,
+	.s_register = isx019_s_register,
 #endif
 };
 
-static int isx016_s_ctrl(struct v4l2_ctrl *ctrl)
+static int isx019_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct v4l2_subdev *sd = to_sd(ctrl);
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 	int ret = -EINVAL;
 
 	if (!priv->init_complete)
@@ -348,108 +348,108 @@ static int isx016_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static const struct v4l2_ctrl_ops isx016_ctrl_ops = {
-	.s_ctrl = isx016_s_ctrl,
+static const struct v4l2_ctrl_ops isx019_ctrl_ops = {
+	.s_ctrl = isx019_s_ctrl,
 };
 
-static struct v4l2_subdev_video_ops isx016_video_ops = {
-	.s_stream	= isx016_s_stream,
-	.g_mbus_config	= isx016_g_mbus_config,
+static struct v4l2_subdev_video_ops isx019_video_ops = {
+	.s_stream	= isx019_s_stream,
+	.g_mbus_config	= isx019_g_mbus_config,
 };
 
-static const struct v4l2_subdev_pad_ops isx016_subdev_pad_ops = {
-	.get_edid	= isx016_get_edid,
-	.enum_mbus_code	= isx016_enum_mbus_code,
-	.get_selection	= isx016_get_selection,
-	.set_selection	= isx016_set_selection,
-	.get_fmt	= isx016_get_fmt,
-	.set_fmt	= isx016_set_fmt,
+static const struct v4l2_subdev_pad_ops isx019_subdev_pad_ops = {
+	.get_edid	= isx019_get_edid,
+	.enum_mbus_code	= isx019_enum_mbus_code,
+	.get_selection	= isx019_get_selection,
+	.set_selection	= isx019_set_selection,
+	.get_fmt	= isx019_get_fmt,
+	.set_fmt	= isx019_set_fmt,
 };
 
-static struct v4l2_subdev_ops isx016_subdev_ops = {
-	.core	= &isx016_core_ops,
-	.video	= &isx016_video_ops,
-	.pad	= &isx016_subdev_pad_ops,
+static struct v4l2_subdev_ops isx019_subdev_ops = {
+	.core	= &isx019_core_ops,
+	.video	= &isx019_video_ops,
+	.pad	= &isx019_subdev_pad_ops,
 };
 
-static void isx016_otp_id_read(struct i2c_client *client)
+static void isx019_otp_id_read(struct i2c_client *client)
 {
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 	int i;
 	u16 val = 0;
 
-	/* read camera id from isx016 OTP memory */
+	/* read camera id from isx019 OTP memory */
 	for (i = 0; i < 6; i+=2) {
-		isx016_read16(client, 8, 0x60 + i, &val);
+		isx019_read16(client, 8, 0x60 + i, &val);
 		priv->id[i] = val >> 8;
 		priv->id[i+1] = val & 0xff;
 	}
 }
 
-static ssize_t isx016_otp_id_show(struct device *dev,
+static ssize_t isx019_otp_id_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(to_i2c_client(dev));
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 
-	isx016_otp_id_read(client);
+	isx019_otp_id_read(client);
 
 	return snprintf(buf, 32, "%02x:%02x:%02x:%02x:%02x:%02x\n",
 			priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 }
 
-static DEVICE_ATTR(otp_id_isx016, S_IRUGO, isx016_otp_id_show, NULL);
+static DEVICE_ATTR(otp_id_isx019, S_IRUGO, isx019_otp_id_show, NULL);
 
-static int isx016_initialize(struct i2c_client *client)
+static int isx019_initialize(struct i2c_client *client)
 {
-	struct isx016_priv *priv = to_isx016(client);
+	struct isx019_priv *priv = to_isx019(client);
 	u16 pid = 0;
 	int ret = 0;
 	int tmp_addr;
 	int i;
 
-	isx016_s_port(client, 1);
+	isx019_s_port(client, 1);
 
-	for (i = 0; i < ARRAY_SIZE(isx016_i2c_addr); i++) {
+	for (i = 0; i < ARRAY_SIZE(isx019_i2c_addr); i++) {
 		tmp_addr = client->addr;
 		if (priv->max9286_addr) {
 			client->addr = priv->max9271_addr;			/* Serializer I2C address */
-			reg8_write(client, 0x0A, isx016_i2c_addr[i] << 1);	/* Sensor native I2C address */
+			reg8_write(client, 0x0A, isx019_i2c_addr[i] << 1);	/* Sensor native I2C address */
 			usleep_range(2000, 2500);				/* wait 2ms */
 		};
 		client->addr = tmp_addr;
 
 		/* check model ID */
-		isx016_read16(client, 0, ISX016_PID, &pid);
+		isx019_read16(client, 0, ISX019_PID, &pid);
 
-		if (pid == ISX016_VERSION_REG)
+		if (pid == ISX019_VERSION_REG)
 			break;
 	}
 
-	if (pid != ISX016_VERSION_REG) {
+	if (pid != ISX019_VERSION_REG) {
 		dev_dbg(&client->dev, "Product ID error %x\n", pid);
 		ret = -ENODEV;
 		goto err;
 	}
 
-	priv->max_width = ISX016_MAX_WIDTH;
-	priv->max_height = ISX016_MAX_HEIGHT;
+	priv->max_width = ISX019_MAX_WIDTH;
+	priv->max_height = ISX019_MAX_HEIGHT;
 
 	/* Read OTP IDs */
-	isx016_otp_id_read(client);
+	isx019_otp_id_read(client);
 	/* Program wizard registers */
-	isx016_set_regs(client, isx016_regs_wizard, ARRAY_SIZE(isx016_regs_wizard));
+	isx019_set_regs(client, isx019_regs_wizard, ARRAY_SIZE(isx019_regs_wizard));
 
-	dev_info(&client->dev, "isx016 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+	dev_info(&client->dev, "isx019 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
 		 pid, priv->max_width, priv->max_height, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
-	isx016_s_port(client, 0);
+	isx019_s_port(client, 0);
 
 	return ret;
 }
 
-static int isx016_parse_dt(struct device_node *np, struct isx016_priv *priv)
+static int isx019_parse_dt(struct device_node *np, struct isx019_priv *priv)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&priv->sd);
 	int i;
@@ -474,11 +474,11 @@ static int isx016_parse_dt(struct device_node *np, struct isx016_priv *priv)
 	}
 
 	if (!priv->max9286_addr) {
-		dev_err(&client->dev, "deserializer does not present for ISX016\n");
+		dev_err(&client->dev, "deserializer does not present for ISX019\n");
 		return -EINVAL;
 	}
 
-	isx016_s_port(client, 1);
+	isx019_s_port(client, 1);
 
 	/* setup I2C translator address */
 	tmp_addr = client->addr;
@@ -494,44 +494,44 @@ static int isx016_parse_dt(struct device_node *np, struct isx016_priv *priv)
 	return 0;
 }
 
-static int isx016_probe(struct i2c_client *client,
+static int isx019_probe(struct i2c_client *client,
 		       const struct i2c_device_id *did)
 {
-	struct isx016_priv *priv;
+	struct isx019_priv *priv;
 	int ret;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	v4l2_i2c_subdev_init(&priv->sd, client, &isx016_subdev_ops);
+	v4l2_i2c_subdev_init(&priv->sd, client, &isx019_subdev_ops);
 	priv->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	priv->exposure = 0x100;
 	priv->gain = 0x100;
 	priv->autogain = 1;
 	v4l2_ctrl_handler_init(&priv->hdl, 4);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_BRIGHTNESS, 0, 16, 1, 7);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_CONTRAST, 0, 16, 1, 7);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_SATURATION, 0, 7, 1, 2);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_HUE, 0, 23, 1, 12);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_GAMMA, -128, 128, 1, 0);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_SHARPNESS, 0, 10, 1, 3);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_AUTOGAIN, 0, 1, 1, priv->autogain);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_GAIN, 0, 0xffff, 1, priv->gain);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_EXPOSURE, 0, 0xffff, 1, priv->exposure);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 1);
-	v4l2_ctrl_new_std(&priv->hdl, &isx016_ctrl_ops,
+	v4l2_ctrl_new_std(&priv->hdl, &isx019_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	priv->sd.ctrl_handler = &priv->hdl;
 
@@ -547,11 +547,11 @@ static int isx016_probe(struct i2c_client *client,
 	if (ret < 0)
 		goto cleanup;
 
-	ret = isx016_parse_dt(client->dev.of_node, priv);
+	ret = isx019_parse_dt(client->dev.of_node, priv);
 	if (ret)
 		goto cleanup;
 
-	ret = isx016_initialize(client);
+	ret = isx019_initialize(client);
 	if (ret < 0)
 		goto cleanup;
 
@@ -564,7 +564,7 @@ static int isx016_probe(struct i2c_client *client,
 	if (ret)
 		goto cleanup;
 
-	if (device_create_file(&client->dev, &dev_attr_otp_id_isx016) != 0) {
+	if (device_create_file(&client->dev, &dev_attr_otp_id_isx019) != 0) {
 		dev_err(&client->dev, "sysfs otp_id entry creation failed\n");
 		goto cleanup;
 	}
@@ -577,18 +577,18 @@ cleanup:
 	media_entity_cleanup(&priv->sd.entity);
 	v4l2_ctrl_handler_free(&priv->hdl);
 	v4l2_device_unregister_subdev(&priv->sd);
-#ifdef CONFIG_SOC_CAMERA_ISX016
+#ifdef CONFIG_SOC_CAMERA_ISX019
 	v4l_err(client, "failed to probe @ 0x%02x (%s)\n",
 		client->addr, client->adapter->name);
 #endif
 	return ret;
 }
 
-static int isx016_remove(struct i2c_client *client)
+static int isx019_remove(struct i2c_client *client)
 {
-	struct isx016_priv *priv = i2c_get_clientdata(client);
+	struct isx019_priv *priv = i2c_get_clientdata(client);
 
-	device_remove_file(&client->dev, &dev_attr_otp_id_isx016);
+	device_remove_file(&client->dev, &dev_attr_otp_id_isx019);
 	v4l2_async_unregister_subdev(&priv->sd);
 	media_entity_cleanup(&priv->sd.entity);
 	v4l2_ctrl_handler_free(&priv->hdl);
@@ -597,32 +597,32 @@ static int isx016_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_SOC_CAMERA_ISX016
-static const struct i2c_device_id isx016_id[] = {
-	{ "isx016", 0 },
+#ifdef CONFIG_SOC_CAMERA_ISX019
+static const struct i2c_device_id isx019_id[] = {
+	{ "isx019", 0 },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, isx016_id);
+MODULE_DEVICE_TABLE(i2c, isx019_id);
 
-static const struct of_device_id isx016_of_ids[] = {
-	{ .compatible = "aptina,isx016", },
+static const struct of_device_id isx019_of_ids[] = {
+	{ .compatible = "aptina,isx019", },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, isx016_of_ids);
+MODULE_DEVICE_TABLE(of, isx019_of_ids);
 
-static struct i2c_driver isx016_i2c_driver = {
+static struct i2c_driver isx019_i2c_driver = {
 	.driver	= {
-		.name		= "isx016",
-		.of_match_table	= isx016_of_ids,
+		.name		= "isx019",
+		.of_match_table	= isx019_of_ids,
 	},
-	.probe		= isx016_probe,
-	.remove		= isx016_remove,
-	.id_table	= isx016_id,
+	.probe		= isx019_probe,
+	.remove		= isx019_remove,
+	.id_table	= isx019_id,
 };
 
-module_i2c_driver(isx016_i2c_driver);
+module_i2c_driver(isx019_i2c_driver);
 
-MODULE_DESCRIPTION("SoC Camera driver for ISX016");
+MODULE_DESCRIPTION("SoC Camera driver for ISX019");
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_LICENSE("GPL");
 #endif
