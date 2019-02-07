@@ -34,6 +34,7 @@ struct ti9x4_priv {
 	const char		*forwarding_mode;
 	int			is_coax;
 	int			dvp_bus;
+	int			dvp_lsb;
 	int			hsync;
 	int			vsync;
 	int			poc_delay;
@@ -61,6 +62,10 @@ MODULE_PARM_DESC(is_stp, "  STP cable (default: Coax cable)");
 static int dvp_bus = 8;
 module_param(dvp_bus, int, 0644);
 MODULE_PARM_DESC(dvp_bus, "  DVP/CSI over FPDLink (default: DVP 8-bit)");
+
+static int dvp_lsb = 0;
+module_param(dvp_lsb, int, 0644);
+MODULE_PARM_DESC(dvp_lsb, "  DVP 8-bit LSB/MSB selection (default: DVP 8-bit MSB)");
 
 static int hsync;
 module_param(hsync, int, 0644);
@@ -248,7 +253,7 @@ static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 
 	switch (priv->dvp_bus) {
 	case 8:
-		port_config2 |= 0x80;				/* RAW10 as 8-bit prosessing using upper bits */
+		port_config2 |= (priv->dvp_lsb ? 0xC0 : 0x80);	/* RAW10 as 8-bit prosessing using LSB/MSB bits  */
 		/* fall through */
 	case 10:
 		port_config |= 0x03;				/* DVP over FPDLink (TI913 compatible) RAW10/RAW8 */
@@ -472,6 +477,10 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 		priv->is_coax = 1;
 	if (of_property_read_u32(np, "ti,dvp_bus", &priv->dvp_bus))
 		priv->dvp_bus = 8;
+	if (of_property_read_bool(np, "ti,dvp_lsb"))
+		priv->dvp_lsb = 1;
+	else
+		priv->dvp_lsb = 0;
 	if (of_property_read_u32(np, "ti,hsync", &priv->hsync))
 		priv->hsync = 0;
 	if (of_property_read_u32(np, "ti,vsync", &priv->vsync))
@@ -512,6 +521,8 @@ static int ti9x4_parse_dt(struct i2c_client *client)
 		priv->is_coax = 0;
 	if (dvp_bus != 8)
 		priv->dvp_bus = dvp_bus;
+	if (dvp_lsb)
+		priv->dvp_lsb = dvp_lsb;
 	if (hsync)
 		priv->hsync = hsync;
 	if (!vsync)
