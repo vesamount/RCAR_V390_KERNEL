@@ -22,9 +22,10 @@
 
 #include "ar0323.h"
 
-#define AR0323_I2C_ADDR		0x10
+static const int ar0323_i2c_addr[] = {0x10, 0x20};
 
 #define AR0323_PID		0x3000
+#define AR0323_REV		0x300E
 #define AR0323_VERSION_REG	0x0D56
 
 #define AR0323_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
@@ -356,19 +357,32 @@ static int ar0323_initialize(struct i2c_client *client)
 {
 	struct ar0323_priv *priv = to_ar0323(client);
 	u16 val = 0;
-	u16 pid = 0;
+	u16 pid = 0, rev = 0;
 	int ret = 0;
-//	int tmp_addr;
+	int tmp_addr;
+	int i;
 
-	/* check and show model ID */
-	reg16_read16(client, AR0323_PID, &pid);
+	for (i = 0; i < ARRAY_SIZE(ar0323_i2c_addr); i++) {
+		tmp_addr = client->addr;
+		if (priv->ti9x4_addr) {
+			client->addr = priv->ti9x4_addr;/* Deserializer I2C address */
+			reg8_write(client, 0x5d, ar0323_i2c_addr[i] << 1); /* Sensor native I2C address */
+			usleep_range(2000, 2500);	/* wait 2ms */
+		}
+		client->addr = tmp_addr;
+
+		/* check model ID */
+		reg16_read16(client, AR0323_PID, &pid);
+
+		if (pid == AR0323_VERSION_REG)
+			break;
+	}
 
 	if (pid != AR0323_VERSION_REG) {
-		dev_dbg(&client->dev, "Product ID error %x\n\n\n\n", pid);
+		dev_dbg(&client->dev, "Product ID error %x\n", pid);
 		ret = -ENODEV;
 		goto err;
 	}
-
 #if 0
 	/* setup XCLK */
 	tmp_addr = client->addr;
@@ -381,7 +395,10 @@ static int ar0323_initialize(struct i2c_client *client)
 	}
 	client->addr = tmp_addr;
 #endif
-
+	/* check revision  */
+	reg16_read16(client, AR0323_REV, &rev);
+	/* Read OTP IDs */
+	ar0323_otp_id_read(client);
 	/* Program wizard registers */
 	ar0323_set_regs(client, ar0323_regs_wizard, ARRAY_SIZE(ar0323_regs_wizard));
 
@@ -390,11 +407,8 @@ static int ar0323_initialize(struct i2c_client *client)
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
 
-	/* Read OTP IDs */
-	ar0323_otp_id_read(client);
-
-	dev_info(&client->dev, "ar0323 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, AR0323_MAX_WIDTH, AR0323_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0323 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0323_MAX_WIDTH, AR0323_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	return ret;
 }
@@ -437,13 +451,8 @@ static int ar0323_parse_dt(struct device_node *np, struct ar0323_priv *priv)
 		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
 		usleep_range(2000, 2500);				/* wait 2ms */
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
-		reg8_write(client, 0x5d, AR0323_I2C_ADDR << 1);		/* Sensor native I2C address */
-
-//		reg8_write(client, 0x6e, 0xa9);				/* GPIO0 - reset, GPIO1 - fsin ??????? */
 	}
 	client->addr = tmp_addr;
-
-	mdelay(10);
 
 	return 0;
 }
