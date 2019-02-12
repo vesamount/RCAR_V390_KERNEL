@@ -503,10 +503,7 @@ static int ov495_parse_dt(struct device_node *np, struct ov495_priv *priv)
 		usleep_range(2000, 2500);				/* wait 2ms */
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
 		reg8_write(client, 0x5d, OV495_I2C_ADDR << 1);		/* Sensor native I2C address */
-
-		reg8_write(client, 0x6e, 0x9a);				/* GPIO0 - fsin, GPIO1 - resetb */
-		/* TODO: why too long? move logic to workqueue? */
-		mdelay(350);						/* time needed to boot all sensor IPs */
+		usleep_range(2000, 2500);				/* wait 2ms */
 	}
 	client->addr = tmp_addr;
 
