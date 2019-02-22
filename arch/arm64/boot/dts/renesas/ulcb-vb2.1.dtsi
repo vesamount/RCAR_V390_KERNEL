@@ -1,0 +1,110 @@
+/*
+ * Device Tree Source for the ULCB Videobox V2.1 board
+ *
+ * Copyright (C) 2019 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "ulcb-vb2.dtsi"
+
+/{
+	leds {
+		led_button {
+			gpios = <&gpio_ext_led 9 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "cpu";
+		};
+	};
+
+	gpio_keys_polled {
+		compatible = "gpio-keys-polled";
+		poll-interval = <100>;
+		autorepeat;
+
+		button_pwr {
+			label = "GPIO Key POWER";
+			linux,code = <116>;
+			gpios = <&gpio_ext_led 8 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&i2c_power {
+	adc@48 {
+		reg = <0x48>;
+		compatible = "ti,ads1115";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		wake7_voltage: channel@4 {
+			/* single endded AIN0 */
+			reg = <4>;
+		};
+		wake8_voltage: channel@5 {
+			/* single endded AIN1 */
+			reg = <5>;
+		};
+		dc_prot_voltage: channel@6 {
+			/* single endded AIN2 */
+			reg = <6>;
+		};
+		dcdc_voltage: channel@7 {
+			/* single endded AIN3 */
+			reg = <7>;
+		};
+	};
+};
+
+&gpio6 {
+	/delete-node/m2_0_rst;
+
+	m2_0_rst {
+		gpio-hog;
+		gpios = <6 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "M.2 0 RST#";
+	};
+};
+
+&pfc {
+	usb1_pins: usb1 {
+		groups = "usb1";
+		function = "usb1";
+	};
+
+	usb3_pins: usb3 {
+		groups = "usb2_ch3";
+		function = "usb2_ch3";
+	};
+};
+
+&usb2_phy1 {
+	pinctrl-0 = <&usb1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&usb2_phy3 {
+	pinctrl-0 = <&usb3_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
+};
+
+&ehci3 {
+	status = "okay";
+};
+
+&ohci3 {
+	status = "okay";
+};

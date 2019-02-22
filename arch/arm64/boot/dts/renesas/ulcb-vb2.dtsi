@@ -1061,7 +1061,7 @@
 			};
 		};
 
-		i2c@2 {
+		i2c_power: i2c@2 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;

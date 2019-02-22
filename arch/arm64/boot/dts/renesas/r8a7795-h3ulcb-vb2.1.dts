@@ -1,0 +1,68 @@
+/*
+ * Device Tree Source for the H3ULCB Videobox board V2.1 on r8a7795
+ *
+ * Copyright (C) 2019 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "r8a7795-h3ulcb.dts"
+#include "ulcb-vb2.1.dtsi"
+
+/ {
+	model = "Renesas H3ULCB Videobox V2.1 board based on r8a7795";
+
+	hdmi1-out {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi1_con: endpoint {
+				remote-endpoint = <&rcar_dw_hdmi1_out>;
+			};
+		};
+	};
+};
+
+&du {
+	ports {
+		port@2 {
+			endpoint {
+				remote-endpoint = <&rcar_dw_hdmi1_in>;
+			};
+		};
+		port@3 {
+			endpoint {
+				remote-endpoint = <&lvds_in>;
+			};
+		};
+	};
+};
+
+&hdmi1 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			rcar_dw_hdmi1_in: endpoint {
+				remote-endpoint = <&du_out_hdmi1>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			rcar_dw_hdmi1_out: endpoint {
+				remote-endpoint = <&hdmi1_con>;
+			};
+		};
+	};
+};
+
+&hsusb {
+	status = "okay";
+};
