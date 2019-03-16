@@ -32,5 +32,5 @@ struct ar0143_reg {
 	u16	val;
 };
 
-//#include "ar0143_custom.h"
+#include "ar0143_custom.h"
 #include "ar0143_rev1.h"

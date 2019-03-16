@@ -25,6 +25,7 @@
 #define AR0143_I2C_ADDR		0x10
 
 #define AR0143_PID		0x3000
+#define AR0143_REV		0x300E
 #define AR0143_VERSION_REG	0x0D54
 
 #define AR0143_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
@@ -36,6 +37,7 @@ struct ar0143_priv {
 	struct v4l2_rect		rect;
 	int				init_complete;
 	u8				id[6];
+	int				setup;
 	/* serializers */
 	int				max9286_addr;
 	int				max9271_addr;
@@ -48,6 +50,10 @@ struct ar0143_priv {
 	int				vts;
 	int				frame_preamble;
 };
+
+static int setup = 1;
+module_param(setup, int, 0644);
+MODULE_PARM_DESC(setup, " Forse setup (default: 1 - rev1)");
 
 static inline struct ar0143_priv *to_ar0143(const struct i2c_client *client)
 {
@@ -432,7 +438,7 @@ static int ar0143_initialize(struct i2c_client *client)
 {
 	struct ar0143_priv *priv = to_ar0143(client);
 	u16 val = 0;
-	u16 pid = 0;
+	u16 pid = 0, rev = 0;
 	int ret = 0;
 	int tmp_addr;
 
@@ -447,8 +453,19 @@ static int ar0143_initialize(struct i2c_client *client)
 		goto err;
 	}
 
+	/* check revision  */
+	reg16_read16(client, AR0143_REV, &rev);
+	/* Read OTP IDs */
+	ar0143_otp_id_read(client);
 	/* Program wizard registers */
-	ar0143_set_regs(client, ar0143_regs_wizard_rev1, ARRAY_SIZE(ar0143_regs_wizard_rev1));
+	switch (priv->setup) {
+	case 0:
+		ar0143_set_regs(client, ar0143_regs_wizard_custom, ARRAY_SIZE(ar0143_regs_wizard_custom));
+		break;
+	case 1:
+	default:
+		ar0143_set_regs(client, ar0143_regs_wizard_rev1, ARRAY_SIZE(ar0143_regs_wizard_rev1));
+	}
 
 	tmp_addr = client->addr;
 	if (priv->max9271_addr) {
@@ -467,15 +484,12 @@ static int ar0143_initialize(struct i2c_client *client)
 	client->addr = tmp_addr;
 
 	/* Enable stream */
-	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
-	val |= (1 << 2);			// Set streamOn bit
-	reg16_write16(client, 0x301a, val);	// Start Streaming
+	reg16_read16(client, 0x301a, &val);
+	val |= (1 << 2);
+	reg16_write16(client, 0x301a, val);
 
-	/* Read OTP IDs */
-	ar0143_otp_id_read(client);
-
-	dev_info(&client->dev, "ar0143 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, AR0143_MAX_WIDTH, AR0143_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0143 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0143_MAX_WIDTH, AR0143_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	ar0143_s_port(client, 0);
 
@@ -488,6 +502,9 @@ static int ar0143_parse_dt(struct device_node *np, struct ar0143_priv *priv)
 	int i;
 	struct device_node *endpoint = NULL, *rendpoint = NULL;
 	int tmp_addr = 0;
+
+	if (of_property_read_u32(np, "onnn,setup", &priv->setup))
+		priv->setup = 1;
 
 	for (i = 0; ; i++) {
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
@@ -541,6 +558,10 @@ static int ar0143_parse_dt(struct device_node *np, struct ar0143_priv *priv)
 	client->addr = tmp_addr;
 
 	mdelay(10);
+
+	/* module params override dts */
+	if (setup != 1)
+		priv->setup = setup;
 
 	return 0;
 }
