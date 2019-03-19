@@ -448,7 +448,7 @@ static int ar0143_initialize(struct i2c_client *client)
 	}
 
 	/* Program wizard registers */
-	ar0143_set_regs(client, ar0143_regs_wizard, ARRAY_SIZE(ar0143_regs_wizard));
+	ar0143_set_regs(client, ar0143_regs_wizard_rev1, ARRAY_SIZE(ar0143_regs_wizard_rev1));
 
 	tmp_addr = client->addr;
 	if (priv->max9271_addr) {
