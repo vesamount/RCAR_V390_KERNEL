@@ -212,7 +212,8 @@ static void max9286_preinit(struct i2c_client *client, int addr)
 	reg8_write(client, 0x00, 0x00);		/* disable all GMSL links [0:3] */
 //	usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
 	reg8_write(client, 0x1b, priv->switchin); /* coax polarity (default - normal) */
-	reg8_write(client, 0x1c, priv->him ? 0xf4 : 0x04); /* high-immunity/legacy mode, BWS: 24-bit */
+	reg8_write(client, 0x1c, (priv->him ? 0xf0 : 0x00) |
+				 (priv->bws ? 0x05 : 0x04)); /* high-immunity/legacy mode, BWS 24bit */
 }
 
 static void max9286_sensor_reset(struct i2c_client *client, int addr, int reset_on)
@@ -253,8 +254,6 @@ static void max9286_postinit(struct i2c_client *client, int addr)
 	reg8_write(client, 0x0b, priv->csi2_outord);		/* CSI2 output order */
 	reg8_write(client, 0x15, 0x9b);				/* enable CSI output, VC is set accordingly to Link number, BIT7 magic must be set */
 	reg8_write(client, 0x1b, priv->switchin | priv->links_mask); /* coax polarity, enable equalizer for CAMs */
-	reg8_write(client, 0x1c, (priv->him ? 0xf0 : 0x00) |
-				 (priv->bws ? 0x05 : 0x04));	/* high-immunity/legacy mode, BWS 24/32-bit */
 	usleep_range(5000, 5500);				/* wait 2ms after any change of reverse channel settings */
 
 	if (strcmp(priv->fsync_mode, "manual") == 0) {
@@ -292,6 +291,12 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
 			reg8_write(client, 0x04, 0x43);		/* wake-up, enable reverse_control/conf_link */
 			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+			if (priv->bws) {
+				reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) |
+							 (priv->dbl ? 0x80 : 0) |
+							 (priv->bws ? 0x20 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24/32-bit */
+				usleep_range(2000, 2500);	/* wait 2ms after any change of reverse channel settings */
+			}
 		} else {
 			/* Legacy mode setup */
 			client->addr = priv->des_addr;		/* MAX9286-CAMx I2C */
@@ -305,6 +310,12 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 			reg8_write(client, 0x08, 0x01);		/* reverse channel receiver high threshold enable */
 			reg8_write(client, 0x97, 0x5f);		/* enable reverse control channel programming (MAX96705-MAX96711 only) */
 			usleep_range(2000, 2500);		/* wait 2ms after any change of reverse channel settings */
+			if (priv->bws) {
+				reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) |
+							 (priv->dbl ? 0x80 : 0) |
+							 (priv->bws ? 0x20 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24/32-bit */
+				usleep_range(2000, 2500);	/* wait 2ms after any change of reverse channel settings */
+			}
 
 			client->addr = priv->des_addr;		/* MAX9286-CAMx I2C */
 			reg8_write(client, 0x3b, 0x19);		/* reverse channel increase amplitude 170mV to compensate high threshold enabled */
@@ -391,7 +402,9 @@ static void max9286_gmsl_link_setup(struct i2c_client *client, int idx)
 	/* GMSL setup */
 	client->addr = 0x40;					/* MAX9271-CAMx I2C */
 	reg8_write(client, 0x0d, 0x22 | MAXIM_I2C_I2C_SPEED);	/* disable artificial ACK, I2C speed set */
-	reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) | (priv->dbl ? 0x80 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24-bit */
+	reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) |
+					(priv->dbl ? 0x80 : 0) |
+					(priv->bws ? 0x20 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24/32-bit */
 	usleep_range(2000, 2500);				/* wait 2ms */
 	reg8_write(client, 0x02, 0xff);				/* spread spectrum +-4%, pclk range automatic, Gbps automatic  */
 	usleep_range(2000, 2500);				/* wait 2ms */
@@ -507,9 +520,6 @@ static void max9286_gmsl_link_setup(struct i2c_client *client, int idx)
 	client->addr = priv->max9271_addr_map[idx];		/* MAX9271-CAMx I2C new */
 	maxim_max927x_dump_regs(client);
 #endif
-	reg8_write(client, 0x07, 0x04 | (priv->pclk_rising_edge ? 0 : 0x10) |
-					(priv->dbl ? 0x80 : 0) |
-					(priv->bws ? 0x20 : 0)); /* RAW/YUV, PCLK edge, HS/VS encoding enabled, DBL mode, BWS 24/32-bit */
 }
 
 static int max9286_initialize(struct i2c_client *client)
