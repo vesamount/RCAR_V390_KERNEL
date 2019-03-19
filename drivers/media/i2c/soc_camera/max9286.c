@@ -108,6 +108,10 @@ static int active_low_resetb;
 module_param(active_low_resetb, int, 0644);
 MODULE_PARM_DESC(active_low_resetb, " Serializer GPIO reset level (default: 0 - active high)");
 
+static int timeout_n = 100;
+module_param(timeout_n, int, 0644);
+MODULE_PARM_DESC(timeout_n, " Timeout of link detection (default: 100 retries)");
+
 static int poc_delay = 50;
 module_param(poc_delay, int, 0644);
 MODULE_PARM_DESC(poc_delay, " Delay in ms after POC enable (default: 50 ms)");
@@ -270,9 +274,9 @@ static void max9286_postinit(struct i2c_client *client, int addr)
 static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 {
 	struct max9286_priv *priv = i2c_get_clientdata(client);
-	u8 val = 0;
+	u8 val = 0, lock_sts = 0, link_sts = 0;
 	int timeout = priv->timeout;
-	char timeout_str[10];
+	char timeout_str[40];
 	int ret = 0;
 
 	/* Reverse channel enable */
@@ -340,8 +344,8 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 			break;
 		}
 
-		if (timeout == priv->timeout / 2 && poc_trig) {
-			if (!IS_ERR(priv->poc_gpio[idx])) {
+		if (poc_trig) {
+			if (!IS_ERR(priv->poc_gpio[idx]) && (timeout % poc_trig == 0)) {
 				gpiod_direction_output(priv->poc_gpio[idx], 0); /* POC power off */
 				mdelay(200);
 				gpiod_direction_output(priv->poc_gpio[idx], 1); /* POC power on */
@@ -351,6 +355,10 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 	}
 
 	max9286_sensor_reset(client, client->addr, 1);	/* sensor reset */
+
+	client->addr = priv->des_addr;			/* MAX9286-CAMx I2C */
+	reg8_read(client, 0x27, &lock_sts);		/* LOCK status */
+	reg8_read(client, 0x49, &link_sts);		/* LINK status */
 
 	if (!timeout) {
 		ret = -ETIMEDOUT;
@@ -362,11 +370,11 @@ static int max9286_reverse_channel_setup(struct i2c_client *client, int idx)
 	priv->csi2_outord |= ((hweight8(priv->links_mask) - 1) << (idx * 2));
 
 out:
-	sprintf(timeout_str, "retries=%d", priv->timeout - timeout);
+	sprintf(timeout_str, "retries=%d lock_sts=%d link_sts=0x%x", priv->timeout - timeout, !!(lock_sts & 0x80), link_sts & (0x11 << idx));
 	dev_info(&client->dev, "link%d %s %sat 0x%x %s %s\n", idx, ser_name(priv->ser_id),
 			       ret == -EADDRINUSE ? "already " : "", priv->max9271_addr_map[idx],
 			       ret == -ETIMEDOUT ? "not found: timeout GMSL link establish" : "",
-			       priv->timeout - timeout? timeout_str : "");
+			       priv->timeout - timeout ? timeout_str : "");
 
 	return ret;
 }
@@ -741,6 +749,8 @@ static int max9286_parse_dt(struct i2c_client *client)
 		priv->gpio_resetb = gpio_resetb;
 	if (active_low_resetb)
 		priv->active_low_resetb = active_low_resetb;
+	if (timeout_n)
+		priv->timeout = timeout_n;
 	if (poc_delay)
 		priv->poc_delay = poc_delay;
 	if (bws)
