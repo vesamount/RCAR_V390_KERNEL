@@ -10,6 +10,8 @@
 
 #include "r8a77970-v3msk.dts"
 #include <dt-bindings/gpio/gpio.h>
+/* FDPLink output */
+//#include "vb-fdplink-output.dtsi"
 
 / {
 	model = "Renesas V3MSK Videobox Mini board based on r8a7797";
