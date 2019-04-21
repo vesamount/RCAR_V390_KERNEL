@@ -106,3 +106,9 @@ config SOC_CAMERA_IMX219
 	depends on SOC_CAMERA && I2C
 	help
 	  This is Sony IMX219 driver
+
+config SOC_CAMERA_AR0147
+	tristate "AR0147 camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an AR0147 imager glue
