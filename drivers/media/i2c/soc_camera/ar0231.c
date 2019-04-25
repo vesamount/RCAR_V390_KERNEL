@@ -25,7 +25,7 @@
 static const int ar0231_i2c_addr[] = {0x10, 0x20};
 
 #define AR0231_PID		0x3000
-#define AR0231_REV		0x300E
+#define AR0231_REV		0x31FE
 #define AR0231_VERSION_REG	0x0354
 
 #define AR0231_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12

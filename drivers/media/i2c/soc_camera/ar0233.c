@@ -25,7 +25,7 @@
 static const int ar0233_i2c_addr[] = {0x10, 0x20};
 
 #define AR0233_PID		0x3000
-#define AR0233_REV		0x300E
+#define AR0233_REV		0x31FE
 #define AR0233_VERSION_REG	0x0956
 
 #define AR0233_MEDIA_BUS_FMT	MEDIA_BUS_FMT_SGRBG12_1X12
@@ -410,12 +410,15 @@ static int ar0233_initialize(struct i2c_client *client)
 	/* Read OTP IDs */
 	ar0233_otp_id_read(client);
 	/* Program wizard registers */
-	switch (rev) {
-	case 0x2015:
+	switch (rev & 0xf) {
+	case 0x1:
+		ar0233_set_regs(client, ar0233_regs_wizard_rev1, ARRAY_SIZE(ar0233_regs_wizard_rev1));
+		break;
+	case 0x2:
 		ar0233_set_regs(client, ar0233_regs_wizard_rev2, ARRAY_SIZE(ar0233_regs_wizard_rev2));
 		break;
 	default:
-		ar0233_set_regs(client, ar0233_regs_wizard_rev1, ARRAY_SIZE(ar0233_regs_wizard_rev1));
+		dev_err(&client->dev, "Unsupported chip revision\n");
 	}
 
 	/* Enable stream */
