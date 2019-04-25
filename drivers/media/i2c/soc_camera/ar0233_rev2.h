@@ -28,7 +28,6 @@
 #define MIPI_DT_bit12
 #define LUT_24_to_12
 #define HDR_ratio_gain_default
-#define Enable_trigger_input
 
 /* 3Exp HDR 1280P Mipi_12bit_4lane_30fps, XCLK=27MHz */
 static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
@@ -1249,12 +1248,4 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 {0x300A, AR0233_SENSOR_HEIGHT + 100}, // Frame_length_Lines
 {0x300C, AR0233_SENSOR_WIDTH + 400}, // Line_length_pck
 {0x3012, 0x144}, //Integration_time
-
-#ifdef Enable_trigger_input
-{0x340A, 0x0070}, // GPIO_CONTROL1: GPIO1 is trigger
-{0x340C, 0x0080}, // GPIO_CONTROL2: GPIO1 is trigger
-{0x30CE, 0x0120}, // TRIGGER_MODE
-//{0x30DC, 0x0120}, // TRIGGER_DELAY
-{0x301A, 0x0118}, // GPI pins enable
-#endif /* Enable_trigger_input */
 };

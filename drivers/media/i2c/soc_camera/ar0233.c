@@ -41,9 +41,12 @@ struct ar0233_priv {
 	int				ti9x4_addr;
 	int				ti9x3_addr;
 	int				port;
-	int				gpio_resetb;
-	int				gpio_fsin;
+	int				trigger;
 };
+
+static int trigger = 0;
+module_param(trigger, int, 0644);
+MODULE_PARM_DESC(trigger, " Trigger gpio number (default: 0 - GPIO0) ");
 
 static inline struct ar0233_priv *to_ar0233(const struct i2c_client *client)
 {
@@ -421,8 +424,15 @@ static int ar0233_initialize(struct i2c_client *client)
 		dev_err(&client->dev, "Unsupported chip revision\n");
 	}
 
+	/* Enable trigger*/
+	reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);	/* GPIO_CONTROL1: GPIOn input enable */
+	reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));		/* GPIO_CONTROL2: GPIOn is trigger */
+	reg16_write16(client, 0x30CE, 0x0120);					/* TRIGGER_MODE */
+	//reg16_write16(client, 0x30DC, 0x0120);				/* TRIGGER_DELAY */
+
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
+	val |= (1 << 8);			/* GPI pins enable */
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
 
@@ -443,6 +453,8 @@ static int ar0233_parse_dt(struct device_node *np, struct ar0233_priv *priv)
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
 		if (!endpoint)
 			break;
+
+		of_property_read_u32(endpoint, "trigger", &priv->trigger);
 
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
@@ -472,6 +484,10 @@ static int ar0233_parse_dt(struct device_node *np, struct ar0233_priv *priv)
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
 	}
 	client->addr = tmp_addr;
+
+	/* module params override dts */
+	if (trigger)
+		priv->trigger = trigger;
 
 	return 0;
 }

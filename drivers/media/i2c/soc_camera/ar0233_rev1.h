@@ -1247,12 +1247,4 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x3D14, 0x001E},
 {0x3D16, 0x045E},
 #endif /* MEC DLO default */
-
-#if 1 /* Enable_trigger_input */
-{0x340A, 0x0070}, // GPIO_CONTROL1: GPIO1 is trigger
-{0x340C, 0x0080}, // GPIO_CONTROL2: GPIO1 is trigger
-{0x30CE, 0x0120}, // TRIGGER_MODE
-//{0x30DC, 0x0120}, // TRIGGER_DELAY
-{0x301A, 0x0118}, // GPI pins enable
-#endif /* Enable_trigger_input */
 };
