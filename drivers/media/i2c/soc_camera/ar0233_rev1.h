@@ -9,11 +9,9 @@
  * option) any later version.
  */
 
-/* 3Exp HDR 1080p Mode MIPI-4lane 12-bit 30FPS, XCLK=24MHz */
-static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
-{0x301A, 0x18}, // MIPI, stream OFF
-{AR0233_DELAY, 200}, // Wait 200ms
-
+static const struct ar0233_reg ar0233_rev1_Reset[] = {
+{0x301A, 0x0018},	// Stream off and setup MIPI
+{AR0233_DELAY, 200},
 {0x3070, 0x0000},	//  1: Solid color test pattern,
 			//  2: Full color bar test pattern,
 			//  3: Fade to grey color bar test pattern,
@@ -28,10 +26,12 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 #ifdef AR0233_DISPLAY_PATTERN_COLOR_BAR
 {0x3070, 0x0002},
 #endif
-{AR0233_DELAY, 100}, // Wait 100ms
+{AR0233_DELAY, 100},
+{ }
+}; /* Reset */
 
-#if 1 /* Sequencer Settings */
-#if 1 /* Design_recommended_settings_v5 */
+static const struct ar0233_reg ar0233_rev1_Sequencer_Settings[] = {
+/* Design_recommended_settings_v5 */
 {0x356C, 0xEA55}, //mte.Sensor.Register("DAC_LD_108_109").Value = 0xEA55& -- ADC write Memory delay 7
 {0x3566, 0x2407}, //mte.Sensor.Register("DAC_LD_102_103").Value = 0x2407&  -- Enable column amp bypass for 1x
 {0x3562, 0x1C08}, //mte.Sensor.Register("DAC_LD_98_99").Value = 0x1C08&  -- Increase column amp current
@@ -51,9 +51,9 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x353C, 0x9A0A}, //Boost_ref_Vaa lfm_dcghi(1)
 {0x3526, 0x9000}, //DWellhi(16)
 {0x352E, 0x90D}, //Dlfm_Dcghi(13),(Dlfm_Txhi_Buffer) = 9
-#endif /* Design_recommended_settings_v5 */
+/* Design_recommended_settings_v5 */
 
-#if 1 /* Pixel_char_recommended_settings_v2 */
+/* Pixel_char_recommended_settings_v2 */
 //TXLO @HCG
 {0x3514, 0x555B}, //-0.85V
 {0x3578, 0x555B}, //-0.85V
@@ -68,9 +68,9 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x3528, 0xEB0D}, //Ddcghi(13), txhi(11)
 //DRSTHI, DRSHI
 {0x352A,  0xA27}, //Drsthi (10), Drshi(7)
-#endif /* Pixel_char_recommended_settings_v2 */
+/* Pixel_char_recommended_settings_v2 */
 
-#if 1 /* AR0233_Sequencer_LFM_HDR_v6 */
+/* Sequencer_LFM_HDR_v6 */
 {0x2512, 0x8000},
 {0x2510, 0x070f},
 {0x2510, 0x1011},
@@ -1096,17 +1096,29 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x2510, 0xffff},
 {0x2510, 0xffff},
 {AR0233_DELAY, 100},
-#endif /* AR0233_Sequencer_LFM_HDR_v6 */
-#endif /* Sequencer Settings */
+/* Sequencer_LFM_HDR_v6 */
+{ }
+}; /* Sequencer_Settings */
 
-{0x3082, 0x8}, //0x3082 = 2, 3 exposures
-{0x3110, 0x11}, //Set bypass pix comb for HDR,Pre_hdr_gain_enable_07Jul
-{0x30BA, 0x1122}, //Num_exp_max
+static const struct ar0233_reg ar0233_rev1_HDR_3exp_12bit[] = {
+{0x3082, 0x8},    //num_exp = 3
+{0x3110, 0x11},   //Set bypass pix comb for HDR,Pre_hdr_gain_enable_07Jul
+{0x30BA, 0x1122}, //num_exp_max =3
+{0x31AC, 0x140C}, //12 bit output
+{0x31D0, 0x1}, // Companding
+
+{0x3044, 0x0400}, //Dark_control
+
+// FPS = 103.5MHz / reg0x300A / reg0x300C
+{0x300A, AR0233_SENSOR_HEIGHT + 100}, // Frame_length_Lines
+{0x300C, AR0233_SENSOR_WIDTH + 400}, // Line_length_pck
 {0x3012, 0x144}, //Integration_time
+{ }
+}; /* HDR_3exp_12bit */
 
-#if 1 /* Serial 12-bit Timing Setup_108Mhz */
-/* PCLK=24Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 */
-/* PCLK=24Mhz/2 *54/1/6= 108Mhz - TI serializers */
+static const struct ar0233_reg ar0233_rev1_Serial_12bit_Timing_Setup_103p5[] = {
+/* PCLK=DES_REFCLK /PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 */
+/* PCLK=23MHz/2 *54/1/6= 103.5Mhz - TI serializers */
 {0x3030, 54}, //PLL_MULTIPLIER ; 0x3030 [11:0]
 {0x302E, 2}, //PRE_PLL_CLK_DIV ; 0x302E [5:0]
 {0x302C, 1}, //P1 divider (vt_sys_clk_div)
@@ -1114,9 +1126,10 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x3038, 2}, //P3 divider (op_sys_clk_div); 0x3038 [4:0]
 {0x3036, 6}, //P4 divider (op_word_clk_div); 0x3036 [4:0]
 {0x31DC, 0x1FB0},
-#endif /* Serial 12-bit Timing Setup_108Mhz */
+{ }
+}; /* Serial_12bit_Timing_Setup_103p5 */
 
-#if 1 /* MIPI 4 Lane 12BITS 30FPS_ext24_LIM */
+static const struct ar0233_reg ar0233_rev1_MIPI_4Lane_12BITS[] = {
 {0x31AE, 0x204}, //MIPI enable, 4 lanes
 {0x31B0, 0x4B}, //frame_preamble
 {0x31B2, 0x33}, //line_preamble
@@ -1125,46 +1138,43 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x31B8, 0x4047}, //mipi_timing_2
 {0x31BA, 0x105}, //mipi_timing_3
 {0x31BC, 0x704}, //mipi_timing_4
-#endif /* MIPI 4 Lane 12BITS 30FPS_ext24_LIM */
-
-#if 1 /* MIPI_DT_bit12 */
 {0x3342, 0x122C}, // MIPI_F1_PDT_EDT
 {0x3346, 0x122C}, // MIPI_F2_PDT_EDT
 {0x334A, 0x122C}, // MIPI_F3_PDT_EDT
 {0x334E, 0x122C}, // MIPI_F4_PDT_EDT
-#endif /* MIPI_DT_bit12 */
+{ }
+}; /* MIPI_4Lane_12BITS */
 
-/* resolution */
+static const struct ar0233_reg ar0233_rev1_Full_resolution[] = {
 {0x3004, AR0233_X_START}, // X_ADDR_START_
 {0x3008, AR0233_X_END}, // X_ADDR_END_
 {0x3002, AR0233_Y_START}, // Y_ADDR_START_
 {0x3006, AR0233_Y_END}, // Y_ADDR_END_
+{0x3402, (0x8000 & 0) | AR0233_MAX_WIDTH}, // X_OUTPUT_CONTROL
+{0x3404, (0x8000 & 0) | AR0233_MAX_HEIGHT}, // Y_OUTPUT_CONTROL
+{ }
+}; /* Full_resolution */
 
+static const struct ar0233_reg ar0233_rev1_disable_embed_data_stat[] = {
 #ifdef AR0233_EMBEDDED_LINE
 {0x3040, 0x0000}, //Embedded stat2 and data2 rows
 {0x3064, 0x0180}, //Enable embedded data and stat
 #else
 {0x3064, 0x0}, //Disable embedded data and stat
 #endif
+{ }
+}; /* disable_embed_data_stat */
 
-// FPS = 108MHz / reg0x300A / reg0x300C * (DES_REF_XTAL/24MHz)
-{0x300A, AR0233_SENSOR_HEIGHT + 100}, // Frame_length_Lines
-{0x300C, AR0233_SENSOR_WIDTH + 400}, // Line_length_pck
-//{0x300C, 0x960}, //Line_lenth_pck_FRN AEF
-//{0x300A, 0x5DC}, //FLL
-
-#if 1 /* Gain_3.28x */
+static const struct ar0233_reg ar0233_rev1_Gain_3p28x[] = {
 {0x3022, 0x01}, // GROUPED_PARAMETER_HOLD_
 {0x3362, 0x000F}, // DC_GAIN
 {0x3366, 0x1111},
 {0x336A, 0x0000},
 {0x3022, 0x00}, // GROUPED_PARAMETER_HOLD_
-#endif  /* Gain_3.28x */
+{ }
+}; /* Gain_3.28x */
 
-{0x31D0, 0x1}, // Companding
-{0x31AC, 0x140C}, // DLO20 to 12output
-
-#if 1 /* MEC DLO default */
+static const struct ar0233_reg ar0233_rev1_MEC_DLO_default[] = {
 {0x3D00, 0x6F73}, // control
 {0x3D02, 0x0033},
 {0x3364, 0x068C}, // dcg_trim = 13.1
@@ -1246,5 +1256,19 @@ static const struct ar0233_reg ar0233_regs_wizard_rev1[] = {
 {0x3D12, 0x0798},
 {0x3D14, 0x001E},
 {0x3D16, 0x045E},
-#endif /* MEC DLO default */
+{ }
+}; /* MEC_DLO_default */
+
+/* 3Exp HDR, 1280P, MIPI 4-lane 12-bit, 30fps, EXTCLK=23MHz (comes from deser) */
+static const struct ar0233_reg *ar0233_regs_hdr_mipi_12bit_30fps_rev1[] = {
+	ar0233_rev1_Reset,
+	ar0233_rev1_Sequencer_Settings,
+	ar0233_rev1_disable_embed_data_stat,
+	ar0233_rev1_HDR_3exp_12bit,
+	ar0233_rev1_Serial_12bit_Timing_Setup_103p5,
+	ar0233_rev1_MIPI_4Lane_12BITS,
+	ar0233_rev1_Full_resolution,
+	ar0233_rev1_Gain_3p28x,
+	ar0233_rev1_MEC_DLO_default,
+	NULL,
 };

@@ -1,7 +1,7 @@
 /*
  * ON Semiconductor AR0233 sensor camera wizard 2048x1280@30/BGGR/MIPI
  *
- * Copyright (C) 2018 Cogent Embedded, Inc.
+ * Copyright (C) 2018-2019 Cogent Embedded, Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -9,31 +9,9 @@
  * option) any later version.
  */
 
-#define O1_Recommended_Defaults_LFM_HDR
-#ifdef O1_Recommended_Defaults_LFM_HDR
- #define Design_recommended_settings_REV2_V9
- #define Sequence_hidy_ar0233_REV2_V13
- #define Pre_hdr_gain_enable
- #define Tempsensor_init
-#endif
-#define disable_embed_data_stat
-#define HDR_3exp_12bit
-#if 0
- #define pll_27_108_4lane_12b
- #define mipi_108_12bit_4lane
-#else
- #define pll_27_124p5_4lane_12b
- #define mipi_124p5_12bit_4lane
-#endif
-#define MIPI_DT_bit12
-#define LUT_24_to_12
-#define HDR_ratio_gain_default
-
-/* 3Exp HDR 1280P Mipi_12bit_4lane_30fps, XCLK=27MHz */
-static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
-{0x301A, 0x18}, // MIPI, stream OFF
-{AR0233_DELAY, 200}, // Wait 200ms
-
+static const struct ar0233_reg ar0233_rev2_Reset[] = {
+{0x301A, 0x0018},	// Stream off and setup MIPI
+{AR0233_DELAY, 200},
 {0x3070, 0x0000},	//  1: Solid color test pattern,
 			//  2: Full color bar test pattern,
 			//  3: Fade to grey color bar test pattern,
@@ -48,10 +26,12 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 #ifdef AR0233_DISPLAY_PATTERN_COLOR_BAR
 {0x3070, 0x0002},
 #endif
-{AR0233_DELAY, 100}, // Wait 100ms
+{AR0233_DELAY, 100},
+{ }
+}; /* Reset */
 
-#ifdef O1_Recommended_Defaults_LFM_HDR
-#ifdef Design_recommended_settings_REV2_V9
+static const struct ar0233_reg ar0233_rev2_O1_Recommended_Defaults_LFM_HDR[] = {
+/* Design_recommended_settings_REV2_V9 */
 {0x3C72, 0x0076},
 {0x3C74, 0x0031},
 {0x3C76, 0x00DC},
@@ -99,9 +79,9 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 {0x352A, 0x0827},
 {0x352C, 0xA800},
 {0x352E, 0x0908},
-#endif /* Design_recommended_settings_REV2_V9 */
+/* Design_recommended_settings_REV2_V9 */
 
-#ifdef Sequence_hidy_ar0233_REV2_V13
+/* Sequence_hidy_ar0233_REV2_V13 */
 {0x2512, 0x8000},
 {0x2510, 0x070f},
 {0x2510, 0x1011},
@@ -1127,46 +1107,73 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 {0x2510, 0x3426},
 {0x2510, 0x3614},
 {AR0233_DELAY, 100},
-#endif /* Sequence_hidy_ar0233_REV2_V13 */
+/* Sequence_hidy_ar0233_REV2_V13 */
 
-#ifdef Pre_hdr_gain_enable
+/* Pre_hdr_gain_enable */
 {0x3110, 0x0011},
-#endif /* Pre_hdr_gain_enable */
 
-#ifdef  Tempsensor_init
+/* Tempsensor_init */
 {0x3E94, 0x3007},
 {0x3E6E, 0xE200},
 {0x3E98, 0x1000},
 {0x3F92, 0x4C00},
 {0x30B8, 0x000B},
 {0x30B8, 0x0003},
-#endif /* Tempsensor_init */
 
 {0x3364, 0x0766}, //14.8
-#endif /* O1_Recommended_Defaults_LFM_HDR */
+{ }
+}; /* O1_Recommended_Defaults_LFM_HDR */
 
-#ifdef disable_embed_data_stat
+static const struct ar0233_reg ar0233_rev2_disable_embed_data_stat[] = {
 {0x3064, 0x0}, // Disable embedded data and stat
-#endif /* disable_embed_data_stat */
+#ifdef AR0233_EMBEDDED_LINE
+{0x3064, 0x0180}, // SMIA_TEST: enable emb data and stats
+#endif
+{ }
+}; /* disable_embed_data_stat */
 
-#ifdef HDR_3exp_12bit
+static const struct ar0233_reg ar0233_rev2_HDR_3exp_12bit[] = {
 {0x3082, 0x8},    //num_exp = 3
 {0x30BA, 0x1122}, //num_exp_max =3
 {0x31AC, 0x140C}, //12 bit output
-#endif /* HDR_3exp_12bit */
 
-#ifdef pll_27_124p5_4lane_12b
+{0x3044, 0x0400}, //Dark_control
+
+// FPS = 102MHz / reg0x300A / reg0x300C
+{0x300A, AR0233_SENSOR_HEIGHT + 100}, // Frame_length_Lines
+{0x300C, AR0233_SENSOR_WIDTH + 400}, // Line_length_pck
+{0x3012, 0x144}, //Integration_time
+{ }
+}; /* HDR_3exp_12bit */
+
+static const struct ar0233_reg ar0233_rev2_pll_23_102_4lane_12b[] = {
 // serial_data_rate was *2 in REV1. but not in REV2
-{0x3030, 0x53}, //PLL_MULTIPLIER
+/* PCLK=DES_REFCLK/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 */
+/* PCLK=23Mhz/0x3 *0x50/1/6= 102Mhz - TI serializers */
+{0x3030, 0x50}, //PLL_MULTIPLIER
 {0x302E, 0x3}, //PRE_PLL_CLK_DIV
 {0x302C, 0x701}, //P1 divider (vt_sys_clk_div)
 {0x302A, 0x6}, //P2 divider (vt_pix_clk_div)
 {0x3038, 0x2}, //P3 divider (op_sys_clk_div)
 {0x3036, 0x6}, //P4 divider (op_word_clk_div)
 {0x31DC, 0x1FB0}, //vcodiv
-#endif /* pll_27_124p5_4lane_12b */
+{ }
+}; /* pll_23_102_4lane_12b */
 
-#ifdef mipi_124p5_12bit_4lane
+static const struct ar0233_reg ar0233_rev2_pll_27_102_4lane_12b[] = {
+// serial_data_rate was *2 in REV1. but not in REV2
+/* PCLK=27Mhz/0x3 *0x44/1/6= 102Mhz - TI serializers */
+{0x3030, 0x44}, //PLL_MULTIPLIER
+{0x302E, 0x3}, //PRE_PLL_CLK_DIV
+{0x302C, 0x701}, //P1 divider (vt_sys_clk_div)
+{0x302A, 0x6}, //P2 divider (vt_pix_clk_div)
+{0x3038, 0x2}, //P3 divider (op_sys_clk_div)
+{0x3036, 0x6}, //P4 divider (op_word_clk_div)
+{0x31DC, 0x1FB0}, //vcodiv
+{ }
+}; /* pll_27_102_4lane_12b */
+
+static const struct ar0233_reg ar0233_rev2_mipi_12bit_4lane[] = {
 {0x31AE, 0x204}, //serial type and lane
 {0x31B0, 0x67}, //frame_preamble
 {0x31B2, 0x30}, //line_preamble
@@ -1175,40 +1182,14 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 {0x31B8, 0xB04D}, //mipi_timing_2
 {0x31BA, 0x411}, //mipi_timing_3
 {0x31BC, 0x940E}, //mipi_timing_4
-#endif /* mipi_124p5_12bit_4lane */
-
-#ifdef pll_27_108_4lane_12b
-// serial_data_rate was *2 in REV1. but not in REV2
-/* PCLK=27Mhz/PRE_PLL_CLK_DIV *PLL_MULTIPLIER /P1 /P4 */
-/* PCLK=27Mhz/0x3 *0x48/1/6= 108Mhz - TI serializers */
-{0x3030, 0x48}, //PLL_MULTIPLIER
-{0x302E, 0x3}, //PRE_PLL_CLK_DIV
-{0x302C, 0x701}, //P1 divider (vt_sys_clk_div)
-{0x302A, 0x6}, //P2 divider (vt_pix_clk_div)
-{0x3038, 0x2}, //P3 divider (op_sys_clk_div)
-{0x3036, 0x6}, //P4 divider (op_word_clk_div)
-{0x31DC, 0x1FB0}, //vcodiv
-#endif /* pll_27_108_4lane_12b */
-
-#ifdef mipi_108_12bit_4lane
-{0x31AE, 0x204}, //MIPI_enable
-{0x31B0, 0x67}, //frame_preamble
-{0x31B2, 0x30}, //line_preamble
-{0x31B4, 0x22CC}, //mipi_timing_0
-{0x31B6, 0x33D3}, //mipi_timing_1
-{0x31B8, 0xB04D}, //mipi_timing_2
-{0x31BA, 0x411}, //mipi_timing_3
-{0x31BC, 0x940E}, //mipi_timing_4
-#endif /* mipi_108_12bit_4lane */
-
-#ifdef MIPI_DT_bit12
 {0x3342, 0x122C}, // MIPI_F1_PDT_EDT
 {0x3346, 0x122C}, // MIPI_F2_PDT_EDT
 {0x334A, 0x122C}, // MIPI_F3_PDT_EDT
 {0x334E, 0x122C}, // MIPI_F4_PDT_EDT
-#endif /* MIPI_DT_bit12 */
+{ }
+}; /* mipi_12bit_4lane */
 
-#ifdef LUT_24_to_12
+static const struct ar0233_reg ar0233_rev2_LUT_24_to_12[] = {
 {0x31AC, 0x180C},
 {0x31D0, 0x01}, //companding
 {0x33DA, 0},
@@ -1228,24 +1209,36 @@ static const struct ar0233_reg ar0233_regs_wizard_rev2[] = {
 {0x33F6, 0xFF70},
 {0x33F8, 0xFF70},
 {0x33FA, 0xFF70}, //LUT_15
-#endif /* LUT_24_to_12 */
+{ }
+}; /* LUT_24_to_12 */
 
-/* resolution */
+static const struct ar0233_reg ar0233_rev2_Full_resolution[] = {
 {0x3004, AR0233_X_START}, // X_ADDR_START_
 {0x3008, AR0233_X_END}, // X_ADDR_END_
 {0x3002, AR0233_Y_START}, // Y_ADDR_START_
 {0x3006, AR0233_Y_END}, // Y_ADDR_END_
+{0x3402, (0x8000 & 0) | AR0233_MAX_WIDTH}, // X_OUTPUT_CONTROL
+{0x3404, (0x8000 & 0) | AR0233_MAX_HEIGHT}, // Y_OUTPUT_CONTROL
+{ }
+}; /* Full_resolution */
 
-{0x3044, 0x0400}, //Dark_control
-
-#ifdef HDR_ratio_gain_default
+static const struct ar0233_reg ar0233_rev2_HDR_ratio_gain_default[] = {
 {0x3362, 0x000F}, //HCG
 {0x3366, 0x1111}, //1x
 {0x3238, 0x0444}, // Ratio 16x, Use retio setting
-#endif /* HDR_ratio_gain_default */
+{ }
+}; /* HDR_ratio_gain_default */
 
-// FPS = 124.5MHz / reg0x300A / reg0x300C * (DES_REF_XTAL/27MHz)
-{0x300A, AR0233_SENSOR_HEIGHT + 100}, // Frame_length_Lines
-{0x300C, AR0233_SENSOR_WIDTH + 400}, // Line_length_pck
-{0x3012, 0x144}, //Integration_time
+/* 3Exp HDR, 1280P, MIPI 4-lane 12-bit, 30fps, EXTCLK=23MHz (comes from deser) */
+static const struct ar0233_reg *ar0233_regs_hdr_mipi_12bit_30fps_rev2[] = {
+	ar0233_rev2_Reset,
+	ar0233_rev2_O1_Recommended_Defaults_LFM_HDR,
+	ar0233_rev2_disable_embed_data_stat,
+	ar0233_rev2_HDR_3exp_12bit,
+	ar0233_rev2_pll_23_102_4lane_12b,
+	ar0233_rev2_mipi_12bit_4lane,
+	ar0233_rev2_LUT_24_to_12,
+	ar0233_rev2_Full_resolution,
+	ar0233_rev2_HDR_ratio_gain_default,
+	NULL,
 };

@@ -48,23 +48,42 @@ static int trigger = 0;
 module_param(trigger, int, 0644);
 MODULE_PARM_DESC(trigger, " Trigger gpio number (default: 0 - GPIO0) ");
 
+static int extclk = 23;
+module_param(extclk, int, 0644);
+MODULE_PARM_DESC(extclk, " EXTCLK value in MHz (default: 23) ");
+
+static char *mode = "hdr";
+module_param(mode, charp, 0644);
+MODULE_PARM_DESC(mode, " Modes linear,hdr,seplus (default: hdr)");
+
 static inline struct ar0233_priv *to_ar0233(const struct i2c_client *client)
 {
 	return container_of(i2c_get_clientdata(client), struct ar0233_priv, sd);
 }
 
-static int ar0233_set_regs(struct i2c_client *client,
-			  const struct ar0233_reg *regs, int nr_regs)
+static int ar0233_set_regs(struct i2c_client *client, const struct ar0233_reg **pregs)
 {
-	int i;
+	struct ar0233_priv *priv = to_ar0233(client);
+	const struct ar0233_reg *regs;
+	int i, j;
 
-	for (i = 0; i < nr_regs; i++) {
-		if (regs[i].reg == AR0233_DELAY) {
-			mdelay(regs[i].val);
-			continue;
+	for (j = 0; ; j++) {
+		regs = pregs[j];
+
+		if (!pregs[j])
+			break;
+
+		for (i = 0; ; i++) {
+			if (!regs[i].reg && !regs[i].val)
+				break;
+
+			if (regs[i].reg == AR0233_DELAY) {
+				mdelay(regs[i].val);
+				continue;
+			}
+
+			reg16_write16(client, regs[i].reg, regs[i].val);
 		}
-
-		reg16_write16(client, regs[i].reg, regs[i].val);
 	}
 
 	return 0;
@@ -415,16 +434,22 @@ static int ar0233_initialize(struct i2c_client *client)
 	/* Program wizard registers */
 	switch (rev & 0xf) {
 	case 0x1:
-		ar0233_set_regs(client, ar0233_regs_wizard_rev1, ARRAY_SIZE(ar0233_regs_wizard_rev1));
+		ar0233_set_regs(client, ar0233_regs_hdr_mipi_12bit_30fps_rev1);
 		break;
 	case 0x2:
-		ar0233_set_regs(client, ar0233_regs_wizard_rev2, ARRAY_SIZE(ar0233_regs_wizard_rev2));
+		if (extclk == 27)
+			ar0233_regs_hdr_mipi_12bit_30fps_rev2[4] = ar0233_rev2_pll_27_102_4lane_12b;
+
+		if (strcmp(mode, "hdr") == 0)
+			ar0233_set_regs(client, ar0233_regs_hdr_mipi_12bit_30fps_rev2);
+		else
+			dev_err(&client->dev, "Unsupported mode %s\n", mode);
 		break;
 	default:
 		dev_err(&client->dev, "Unsupported chip revision\n");
 	}
 
-	/* Enable trigger*/
+	/* Enable trigger */
 	reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);	/* GPIO_CONTROL1: GPIOn input enable */
 	reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));		/* GPIO_CONTROL2: GPIOn is trigger */
 	reg16_write16(client, 0x30CE, 0x0120);					/* TRIGGER_MODE */
