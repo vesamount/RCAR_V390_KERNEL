@@ -22,6 +22,7 @@
 #include "ar0323.c"
 #include "ap0101_ar014x.c"
 #include "gw4200_ar014x.c"
+#include "gw5200_imx390.c"
 #include "ov2775.c"
 #include "imx390.c"
 #include "ox03a.c"
@@ -42,6 +43,7 @@ static enum {
 	ID_AR0323,
 	ID_AP0101_AR014X,
 	ID_GW4200_AR014X,
+	ID_GW5200_IMX390,
 	ID_OV2775,
 	ID_IMX390,
 	ID_OX03A,
@@ -133,6 +135,12 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
+	ret = gw5200_probe(client, did);
+	if (!ret) {
+		chip_id = ID_GW5200_IMX390;
+		goto out;
+	}
+
 	ret = ov2775_probe(client, did);
 	if (!ret) {
 		chip_id = ID_OV2775;
@@ -210,6 +218,9 @@ static int ov106xx_remove(struct i2c_client *client)
 		break;
 	case ID_GW4200_AR014X:
 		gw4200_remove(client);
+		break;
+	case ID_GW5200_IMX390:
+		gw5200_remove(client);
 		break;
 	case ID_OV2775:
 		ov2775_remove(client);
