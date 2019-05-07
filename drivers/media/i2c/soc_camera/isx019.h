@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor isx019 (isp) camera wizard 1280x800@30/UYVY/BT601/8bit
+ * Sony isx019 (isp) camera wizard 1280x800@30/UYVY/BT601/8bit
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *

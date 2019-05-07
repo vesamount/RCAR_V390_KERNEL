@@ -1,5 +1,5 @@
 /*
- * OmniVision IMX390 sensor camera driver
+ * Sony IMX390 sensor camera driver
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *

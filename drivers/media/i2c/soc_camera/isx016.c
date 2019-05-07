@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor ISX016 (isp) camera driver
+ * Sony ISX016 (isp) camera driver
  *
  * Copyright (C) 2019 Cogent Embedded, Inc.
  *
@@ -581,7 +581,7 @@ static const struct i2c_device_id isx016_id[] = {
 MODULE_DEVICE_TABLE(i2c, isx016_id);
 
 static const struct of_device_id isx016_of_ids[] = {
-	{ .compatible = "aptina,isx016", },
+	{ .compatible = "sony,isx016", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, isx016_of_ids);

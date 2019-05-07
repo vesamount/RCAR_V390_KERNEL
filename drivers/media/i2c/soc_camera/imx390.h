@@ -1,5 +1,5 @@
 /*
- * OmniVision IMX390 sensor camera wizard 1920x1080@30/BGGR/MIPI
+ * Sony IMX390 sensor camera wizard 1920x1080@30/BGGR/MIPI
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *

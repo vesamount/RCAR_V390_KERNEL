@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor isx016 (isp) camera wizard 1280x960@30/UYVY/BT601/8bit
+ * Sony isx016 (isp) camera wizard 1280x960@30/UYVY/BT601/8bit
  *
  * Copyright (C) 2019 Cogent Embedded, Inc.
  *

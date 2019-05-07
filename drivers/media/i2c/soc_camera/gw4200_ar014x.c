@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor GW4200-AR014X sensor camera driver
+ * GEO Semiconductor GW4200-AR014X sensor camera driver
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -569,7 +569,7 @@ static const struct i2c_device_id gw4200_id[] = {
 MODULE_DEVICE_TABLE(i2c, gw4200_id);
 
 static const struct of_device_id gw4200_of_ids[] = {
-	{ .compatible = "aptina,gw4200", },
+	{ .compatible = "geosemi,gw4200", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, gw4200_of_ids);

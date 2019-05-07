@@ -1,5 +1,5 @@
 /*
- * ON Semiconductor ISX019 (isp) camera driver
+ * Sony ISX019 (isp) camera driver
  *
  * Copyright (C) 2018 Cogent Embedded, Inc.
  *
@@ -605,7 +605,7 @@ static const struct i2c_device_id isx019_id[] = {
 MODULE_DEVICE_TABLE(i2c, isx019_id);
 
 static const struct of_device_id isx019_of_ids[] = {
-	{ .compatible = "aptina,isx019", },
+	{ .compatible = "sony,isx019", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, isx019_of_ids);
