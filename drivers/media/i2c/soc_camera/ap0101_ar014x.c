@@ -46,6 +46,8 @@ struct ap0101_priv {
 	/* serializers */
 	int				max9286_addr;
 	int				max9271_addr;
+	int				ti9x4_addr;
+	int				ti9x3_addr;
 	int				port;
 	int				gpio_resetb;
 	int				gpio_fsin;
@@ -390,10 +392,13 @@ static int ap0101_initialize(struct i2c_client *client)
 	int tmp_addr;
 	int i;
 
-	ap0101_s_port(client, 1);
-
 	for (i = 0; i < ARRAY_SIZE(ap0101_i2c_addr); i++) {
 		tmp_addr = client->addr;
+		if (priv->ti9x4_addr) {
+			client->addr = priv->ti9x4_addr;			/* Deserializer I2C address */
+			reg8_write(client, 0x5d, ap0101_i2c_addr[i] << 1);	/* Sensor native I2C address */
+			usleep_range(2000, 2500);				/* wait 2ms */
+		}
 		if (priv->max9286_addr) {
 			client->addr = priv->max9271_addr;			/* Serializer I2C address */
 			reg8_write(client, 0x0A, ap0101_i2c_addr[i] << 1);	/* Sensor native I2C address */
@@ -478,11 +483,17 @@ static int ap0101_parse_dt(struct device_node *np, struct ap0101_priv *priv)
 		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->max9286_addr) &&
 		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
 			break;
+
+		if (!of_property_read_u32(rendpoint, "ti9x3-addr", &priv->ti9x3_addr) &&
+		    !of_property_match_string(rendpoint->parent->parent, "compatible", "ti,ti9x4") &&
+		    !of_property_read_u32(rendpoint->parent->parent, "reg", &priv->ti9x4_addr) &&
+		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
+			break;
 	}
 
 	of_node_put(endpoint);
 
-	if (!priv->max9286_addr) {
+	if (!priv->max9286_addr && !priv->ti9x4_addr) {
 		dev_err(&client->dev, "deserializer does not present for AP0101\n");
 		return -EINVAL;
 	}
@@ -496,6 +507,12 @@ static int ap0101_parse_dt(struct device_node *np, struct ap0101_priv *priv)
 		reg8_write(client, 0x09, tmp_addr << 1);		/* Sensor translated I2C address */
 		usleep_range(2000, 2500);				/* wait 2ms */
 	};
+	if (priv->ti9x4_addr) {
+		client->addr = priv->ti9x4_addr;			/* Deserializer I2C address */
+		reg8_write(client, 0x4c, (priv->port << 4) | (1 << priv->port)); /* Select RX port number */
+		usleep_range(2000, 2500);				/* wait 2ms */
+		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
+	}
 	client->addr = tmp_addr;
 
 	mdelay(10);
