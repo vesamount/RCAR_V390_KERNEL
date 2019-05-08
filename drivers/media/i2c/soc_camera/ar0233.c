@@ -442,6 +442,8 @@ static int ar0233_initialize(struct i2c_client *client)
 
 		if (strcmp(mode, "hdr") == 0)
 			ar0233_set_regs(client, ar0233_regs_hdr_mipi_12bit_30fps_rev2);
+		else if (strcmp(mode, "seplus") == 0)
+			ar0233_set_regs(client, ar0233_regs_seplus_mipi_12bit_30fps_rev2);
 		else
 			dev_err(&client->dev, "Unsupported mode %s\n", mode);
 		break;
@@ -461,8 +463,8 @@ static int ar0233_initialize(struct i2c_client *client)
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
 
-	dev_info(&client->dev, "ar0233 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, rev, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0233 PID %x (rev %x), res %dx%d, mode=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, mode, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	return ret;
 }
