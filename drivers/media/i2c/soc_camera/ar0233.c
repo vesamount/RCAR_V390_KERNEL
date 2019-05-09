@@ -99,7 +99,7 @@ static int ar0233_set_window(struct v4l2_subdev *sd)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct ar0233_priv *priv = to_ar0233(client);
 
-	dev_err(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
+	dev_dbg(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
 
 	/* horiz crop start */
 	reg16_write16(client, 0x3004, priv->rect.left);
@@ -554,9 +554,9 @@ static int ar0233_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(&priv->hdl, &ar0233_ctrl_ops,
 			  V4L2_CID_EXPOSURE, 1, 0x600, 1, 0x144);
 	v4l2_ctrl_new_std(&priv->hdl, &ar0233_ctrl_ops,
-			  V4L2_CID_HFLIP, 0, 1, 1, 0);
+			  V4L2_CID_HFLIP, 0, 1, 1, 1);
 	v4l2_ctrl_new_std(&priv->hdl, &ar0233_ctrl_ops,
-			  V4L2_CID_VFLIP, 0, 1, 1, 0);
+			  V4L2_CID_VFLIP, 0, 1, 1, 1);
 	priv->sd.ctrl_handler = &priv->hdl;
 
 	ret = priv->hdl.error;

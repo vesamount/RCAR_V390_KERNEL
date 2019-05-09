@@ -2265,9 +2265,11 @@ static const struct ar0233_reg ar0233_rev2_O1_Recommended_Defaults_SE_T1_LIN_T2[
 }; /* O1_Recommended_Defaults_SE_T1_LIN_T2 */
 
 static const struct ar0233_reg ar0233_rev2_disable_embed_data_stat[] = {
-{0x3064, 0x0}, // Disable embedded data and stat
+{0x3040, 0xC000}, //Embedded stat2 and data2 rows, hflip/vflip=1
 #ifdef AR0233_EMBEDDED_LINE
 {0x3064, 0x0180}, // SMIA_TEST: enable emb data and stats
+#else
+{0x3064, 0x0}, // Disable embedded data and stat
 #endif
 { }
 }; /* disable_embed_data_stat */

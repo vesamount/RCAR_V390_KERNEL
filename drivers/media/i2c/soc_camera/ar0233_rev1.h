@@ -1156,8 +1156,8 @@ static const struct ar0233_reg ar0233_rev1_Full_resolution[] = {
 }; /* Full_resolution */
 
 static const struct ar0233_reg ar0233_rev1_disable_embed_data_stat[] = {
+{0x3040, 0xC000}, //Embedded stat2 and data2 rows, hflip/vflip=1
 #ifdef AR0233_EMBEDDED_LINE
-{0x3040, 0x0000}, //Embedded stat2 and data2 rows
 {0x3064, 0x0180}, //Enable embedded data and stat
 #else
 {0x3064, 0x0}, //Disable embedded data and stat
