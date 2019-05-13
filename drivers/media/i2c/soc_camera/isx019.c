@@ -25,7 +25,7 @@
 static const int isx019_i2c_addr[] = {0x1a};
 
 #define ISX019_PID		0x0000
-#define ISX019_VERSION_REG	0x0740
+#define ISX019_VERSION_REG	0x4000
 
 #define ISX019_MEDIA_BUS_FMT	MEDIA_BUS_FMT_YUYV8_2X8
 
@@ -51,6 +51,10 @@ struct isx019_priv {
 	int				gpio_fsin;
 };
 
+static char *intf = "command";
+module_param(intf, charp, 0644);
+MODULE_PARM_DESC(intf, " Registers access interface command,address (default: command)");
+
 static inline struct isx019_priv *to_isx019(const struct i2c_client *client)
 {
 	return container_of(i2c_get_clientdata(client), struct isx019_priv, sd);
@@ -72,31 +76,40 @@ static void isx019_s_port(struct i2c_client *client, int fwd_en)
 
 static int isx019_read16(struct i2c_client *client, u8 category, u16 reg, u16 *val)
 {
-	int ret;
+	int ret = -1;
+
+	if (strcmp(intf, "command") == 0) {
  #define R_NUM_BYTES		9
  #define R_NUM_CMDS		1
  #define R_NUM_CMD_BYTES	6
  #define R_CMD			1
  #define R_BYTES		2
-	u8 buf[R_NUM_BYTES] = {R_NUM_BYTES, R_NUM_CMDS,
-			       R_NUM_CMD_BYTES, R_CMD,
-			       category, reg >> 8, reg & 0xff,
-			       R_BYTES, 0x00};
+		u8 buf[R_NUM_BYTES] = {R_NUM_BYTES, R_NUM_CMDS,
+				       R_NUM_CMD_BYTES, R_CMD,
+				       category, reg >> 8, reg & 0xff,
+				       R_BYTES, 0x00};
 
-	/* calculate checksum */
-	buf[8] = R_NUM_BYTES + R_NUM_CMDS + R_NUM_CMD_BYTES + R_CMD +
-		 category + (reg >> 8) + (reg & 0xff) + R_BYTES;
+		/* calculate checksum */
+		buf[8] = R_NUM_BYTES + R_NUM_CMDS + R_NUM_CMD_BYTES + R_CMD +
+			 category + (reg >> 8) + (reg & 0xff) + R_BYTES;
 
-	ret = i2c_master_send(client, buf, R_NUM_BYTES);
-	if (ret == R_NUM_BYTES)
-		ret = i2c_master_recv(client, buf, R_NUM_BYTES - 2);
+		ret = i2c_master_send(client, buf, R_NUM_BYTES);
+		if (ret == R_NUM_BYTES)
+			ret = i2c_master_recv(client, buf, R_NUM_BYTES - 2);
 
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"read fail: chip 0x%x register 0x%x: %d\n",
-			client->addr, reg, ret);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"read fail: chip 0x%x register 0x%x: %d\n",
+				client->addr, reg, ret);
+		} else {
+			*val = buf[4] | ((u16)buf[5] << 8);
+		}
+	} else if (strcmp(intf, "address") == 0) {
+		reg16_write(client, 0xFFFF, category);
+		ret = reg16_read16(client, reg, val);
+		*val = swab16p(val);
 	} else {
-		*val = ((u16)buf[4] << 8) | buf[5];
+		dev_err(&client->dev, "invalid register access interface %s\n", intf);
 	}
 
 	return ret < 0 ? ret : 0;
@@ -104,26 +117,35 @@ static int isx019_read16(struct i2c_client *client, u8 category, u16 reg, u16 *v
 
 static int isx019_write16(struct i2c_client *client, u8 category, u16 reg, u16 val)
 {
-	int ret;
+	int ret = -1;
+
+	if (strcmp(intf, "command") == 0) {
  #define W_NUM_BYTES		10
  #define W_NUM_CMDS		1
  #define W_NUM_CMD_BYTES	7
  #define W_CMD			2
-	u8 buf[W_NUM_BYTES] = {W_NUM_BYTES, W_NUM_CMDS,
-			       W_NUM_CMD_BYTES, W_CMD,
-			       category, reg >> 8, reg & 0xff,
-			       val >> 8, val & 0xff};
+		u8 buf[W_NUM_BYTES] = {W_NUM_BYTES, W_NUM_CMDS,
+				       W_NUM_CMD_BYTES, W_CMD,
+				       category, reg >> 8, reg & 0xff,
+				       val & 0xff, val >> 8};
 
-	/* calculate checksum */
-	buf[9] = W_NUM_BYTES + W_NUM_CMDS + W_NUM_CMD_BYTES + W_CMD +
-		 category + (reg >> 8) + (reg & 0xff) + (val >> 8) + (val & 0xff);
+		/* calculate checksum */
+		buf[9] = W_NUM_BYTES + W_NUM_CMDS + W_NUM_CMD_BYTES + W_CMD +
+			 category + (reg >> 8) + (reg & 0xff) + (val >> 8) + (val & 0xff);
 
-	ret = i2c_master_send(client, buf, W_NUM_BYTES);
+		ret = i2c_master_send(client, buf, W_NUM_BYTES);
 
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"write fail: chip 0x%x register 0x%x: %d\n",
-			client->addr, reg, ret);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"write fail: chip 0x%x register 0x%x: %d\n",
+				client->addr, reg, ret);
+		}
+	} else if (strcmp(intf, "address") == 0) {
+		val = swab16(val);
+		reg16_write(client, 0xFFFF, category);
+		ret = reg16_write16(client, reg, val);
+	} else {
+		dev_err(&client->dev, "invalid register acces interface %s\n", intf);
 	}
 
 	return ret < 0 ? ret : 0;
@@ -404,12 +426,10 @@ static DEVICE_ATTR(otp_id_isx019, S_IRUGO, isx019_otp_id_show, NULL);
 static int isx019_initialize(struct i2c_client *client)
 {
 	struct isx019_priv *priv = to_isx019(client);
-	u16 pid = 0;
+	u16 pid = 0, val = 0;
 	int ret = 0;
 	int tmp_addr;
 	int i;
-
-	isx019_s_port(client, 1);
 
 	for (i = 0; i < ARRAY_SIZE(isx019_i2c_addr); i++) {
 		tmp_addr = client->addr;
@@ -423,26 +443,28 @@ static int isx019_initialize(struct i2c_client *client)
 		/* check model ID */
 		isx019_read16(client, 0, ISX019_PID, &pid);
 
-		if (pid == ISX019_VERSION_REG)
+		if ((pid & 0xff00) == ISX019_VERSION_REG)
 			break;
 	}
 
-	if (pid != ISX019_VERSION_REG) {
-		dev_dbg(&client->dev, "Product ID error %x\n", pid);
+	if ((pid & 0xff00) != ISX019_VERSION_REG) {
+		dev_err(&client->dev, "Product ID error %x\n", pid);
 		ret = -ENODEV;
 		goto err;
 	}
-
-	priv->max_width = ISX019_MAX_WIDTH;
-	priv->max_height = ISX019_MAX_HEIGHT;
 
 	/* Read OTP IDs */
 	isx019_otp_id_read(client);
 	/* Program wizard registers */
 	isx019_set_regs(client, isx019_regs_wizard, ARRAY_SIZE(isx019_regs_wizard));
+	/* read resolution used by current firmware */
+	isx019_read16(client, 86, 0x8, &val);
+	priv->max_width = val;
+	isx019_read16(client, 86, 0xa, &val);
+	priv->max_height = val;
 
-	dev_info(&client->dev, "isx019 PID %x, res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, priv->max_width, priv->max_height, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "isx019 PID %x (rev %x), res %dx%d, if=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid & 0xff00, pid & 0xff, priv->max_width, priv->max_height, intf, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	isx019_s_port(client, 0);
 

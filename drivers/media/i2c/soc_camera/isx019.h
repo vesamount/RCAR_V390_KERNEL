@@ -9,8 +9,8 @@
  * option) any later version.
  */
 
-#define ISX019_MAX_WIDTH	1280
-#define ISX019_MAX_HEIGHT	800
+//#define ISX019_MAX_WIDTH	1280
+//#define ISX019_MAX_HEIGHT	960
 
 #define ISX019_DELAY		0xffff
 
@@ -22,6 +22,9 @@ struct isx019_reg {
 static const struct isx019_reg isx019_regs_wizard[] = {
 #if 0
 /* enable FSIN */
-#endif
 {ISX019_DELAY, 100},
+#endif
+/* disable embedded data */
+{0x504c, 0x0},
+{0x504e, 0x0},
 };
