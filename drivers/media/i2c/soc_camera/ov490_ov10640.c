@@ -69,10 +69,6 @@ static int conf_link;
 module_param(conf_link, int, 0644);
 MODULE_PARM_DESC(conf_link, " Force configuration link. Used only if robust firmware flashing required (f.e. recovery)");
 
-static int dvp_order;
-module_param(dvp_order, int, 0644);
-MODULE_PARM_DESC(dvp_order, " DVP bus bits order");
-
 static int max_width;
 module_param(max_width, int, 0644);
 MODULE_PARM_DESC(max_width, " Fixed sensor width");
@@ -972,7 +968,7 @@ static int ov490_parse_dt(struct device_node *np, struct ov490_priv *priv)
 	}
 
 	/* module params override dts */
-	if (dvp_order)
+	if (dvp_order != -1)
 		priv->dvp_order = dvp_order;
 	if (max_width && max_height) {
 		priv->max_width = max_width;

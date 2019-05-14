@@ -50,6 +50,11 @@ struct ov10635_priv {
 	int				gpio_fsin;
 };
 
+
+static int dvp_order = -1;
+module_param(dvp_order, int, 0644);
+MODULE_PARM_DESC(dvp_order, " DVP bus bits order");
+
 static inline struct ov10635_priv *to_ov10635(const struct i2c_client *client)
 {
 	return container_of(i2c_get_clientdata(client), struct ov10635_priv, sd);
@@ -600,6 +605,10 @@ static int ov10635_parse_dt(struct device_node *np, struct ov10635_priv *priv)
 	client->addr = tmp_addr;
 
 	udelay(100);
+
+	/* module params override dts */
+	if (dvp_order != -1)
+		priv->dvp_order = dvp_order;
 
 	return 0;
 }
