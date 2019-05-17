@@ -106,13 +106,13 @@ static int ar0140_set_window(struct v4l2_subdev *sd)
 	dev_dbg(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
 
 	/* horiz crop start */
-	reg16_write16(client, 0x3004, priv->rect.left);
+	reg16_write16(client, 0x3004, priv->rect.left + AR0140_X_START);
 	/* horiz crop end */
-	reg16_write16(client, 0x3008, priv->rect.left + priv->rect.width - 1);
+	reg16_write16(client, 0x3008, priv->rect.left + priv->rect.width - 1 + AR0140_X_START);
 	/* vert crop start */
-	reg16_write16(client, 0x3002, priv->rect.top);
+	reg16_write16(client, 0x3002, priv->rect.top + AR0140_Y_START);
 	/* vert crop end */
-	reg16_write16(client, 0x3006, priv->rect.top + priv->rect.height + 1);
+	reg16_write16(client, 0x3006, priv->rect.top + priv->rect.height - 1 + AR0140_Y_START);
 
 	return 0;
 };
