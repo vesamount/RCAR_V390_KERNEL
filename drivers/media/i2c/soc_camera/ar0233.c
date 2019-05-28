@@ -63,7 +63,6 @@ static inline struct ar0233_priv *to_ar0233(const struct i2c_client *client)
 
 static int ar0233_set_regs(struct i2c_client *client, const struct ar0233_reg **pregs)
 {
-	struct ar0233_priv *priv = to_ar0233(client);
 	const struct ar0233_reg *regs;
 	int i, j;
 

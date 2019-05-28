@@ -235,14 +235,14 @@ static int gw5200_g_register(struct v4l2_subdev *sd,
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	int ret;
-	u16 val = 0;
+	u8 val = 0;
 
-	ret = reg16_read16(client, (u16)reg->reg, &val);
+	ret = reg8_read(client, (u8)reg->reg, &val);
 	if (ret < 0)
 		return ret;
 
 	reg->val = val;
-	reg->size = sizeof(u16);
+	reg->size = sizeof(u8);
 
 	return 0;
 }
@@ -252,7 +252,7 @@ static int gw5200_s_register(struct v4l2_subdev *sd,
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	return reg16_write16(client, (u16)reg->reg, (u16)reg->val);
+	return reg8_write(client, (u8)reg->reg, (u8)reg->val);
 }
 #endif
 

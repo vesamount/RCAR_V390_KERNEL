@@ -275,8 +275,6 @@ static void ti9x4_fpdlink3_setup(struct i2c_client *client, int idx)
 	reg8_write(client, 0x70, ((priv->vc_map >> (idx * 4)) << 6) | 0x1e); /* CSI data type: yuv422 8-bit, assign VC */
 	reg8_write(client, 0x71, ((priv->vc_map >> (idx * 4)) << 6) | 0x2c); /* CSI data type: RAW12, assign VC */
 	reg8_write(client, 0xbc, 0x00);				/* Setup minimal time between FV and LV to 3 PCLKs */
-	reg8_write(client, 0x6e, 0x88 | (priv->gpio[1] << 4) | priv->gpio[0]); /* Remote GPIO1/GPIO0 setup */
-	reg8_write(client, 0x6f, 0x88 | (priv->gpio[3] << 4) | priv->gpio[2]); /* Remote GPIO3/GPIO2 setup */
 	reg8_write(client, 0x72, priv->vc_map >> (idx * 4));	/* CSI VC MAP */
 }
 
@@ -340,6 +338,9 @@ static int ti9x4_initialize(struct i2c_client *client)
 			break;
 		}
 		client->addr = priv->des_addr;
+
+		reg8_write(client, 0x6e, 0x88 | (priv->gpio[1] << 4) | priv->gpio[0]); /* Remote GPIO1/GPIO0 setup */
+		reg8_write(client, 0x6f, 0x88 | (priv->gpio[3] << 4) | priv->gpio[2]); /* Remote GPIO3/GPIO2 setup */
 	}
 
 	return 0;

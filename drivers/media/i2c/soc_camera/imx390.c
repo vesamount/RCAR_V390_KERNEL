@@ -249,7 +249,7 @@ static int imx390_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct imx390_priv *priv = to_imx390(client);
 	int ret = -EINVAL;
 	int val;
-	uint8_t val8;
+	uint8_t val8 = 0;
 
 	if (!priv->init_complete)
 		return 0;
