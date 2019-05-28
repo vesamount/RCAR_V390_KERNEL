@@ -94,6 +94,24 @@
 		regulator-always-on;
 	};
 
+	can2_power: regulator@11 {
+		compatible = "regulator-fixed";
+		regulator-name = "can2_power";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_ext_pwr 8 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	can3_power: regulator@12 {
+		compatible = "regulator-fixed";
+		regulator-name = "can3_power";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_ext_pwr 9 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
 	/delete-node/sound;
 
 	rsnd_ak4613: sound@0 {
@@ -187,6 +205,7 @@
 			interrupt-parent = <&gpio0>;
 			interrupts = <15 GPIO_ACTIVE_LOW>;
 			spi-max-frequency = <10000000>;
+			vdd-supply = <&can2_power>;
 		};
 		spican1: spidev@1 {
 			compatible = "microchip,mcp2515";
@@ -195,6 +214,7 @@
 			interrupt-parent = <&gpio1>;
 			interrupts = <5 GPIO_ACTIVE_LOW>;
 			spi-max-frequency = <10000000>;
+			vdd-supply = <&can3_power>;
 		};
 	};
 };
@@ -1147,12 +1167,6 @@
 					output-high;
 					line-name = "can2_120R_load";
 				};
-				can2_rst {
-					gpio-hog;
-					gpios = <8 GPIO_ACTIVE_HIGH>;
-					output-high;
-					line-name = "can2_rst";
-				};
 				/* CAN3 */
 				can3_stby {
 					gpio-hog;
@@ -1165,12 +1179,6 @@
 					gpios = <3 GPIO_ACTIVE_HIGH>;
 					output-high;
 					line-name = "can3_120R_load";
-				};
-				can3_rst {
-					gpio-hog;
-					gpios = <9 GPIO_ACTIVE_HIGH>;
-					output-high;
-					line-name = "can3_rst";
 				};
 			};
 		};
