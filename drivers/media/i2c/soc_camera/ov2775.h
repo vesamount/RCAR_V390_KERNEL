@@ -9,7 +9,7 @@
  * option) any later version.
  */
 
-#define OV2775_DISPLAY_PATTERN_COLOR_BAR
+//#define OV2775_DISPLAY_PATTERN_COLOR_BAR
 
 #define OV2775_MAX_WIDTH	1920
 #define OV2775_MAX_HEIGHT	1080

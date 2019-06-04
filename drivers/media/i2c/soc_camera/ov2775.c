@@ -262,7 +262,21 @@ static int ov2775_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_SHARPNESS:
 	case V4L2_CID_AUTOGAIN:
 	case V4L2_CID_GAIN:
+		/* HCG digital gain */
+		ret = reg16_write(client, 0x315a, ctrl->val >> 8);
+		ret |= reg16_write(client, 0x315b, ctrl->val & 0xff);
+		/* LCG digital gain */
+		ret |= reg16_write(client, 0x315c, ctrl->val >> 8);
+		ret |= reg16_write(client, 0x315d, ctrl->val & 0xff);
+		/* VS digital gain */
+		ret |= reg16_write(client, 0x315e, ctrl->val >> 8);
+		ret |= reg16_write(client, 0x315f, ctrl->val & 0xff);
+		break;
 	case V4L2_CID_EXPOSURE:
+		/* HCG/LCG exposure time */
+		ret = reg16_write(client, 0x30B6, ctrl->val >> 8);
+		ret |= reg16_write(client, 0x30B7, ctrl->val & 0xff);
+		break;
 	case V4L2_CID_HFLIP:
 	case V4L2_CID_VFLIP:
 		break;
@@ -418,7 +432,7 @@ static int ov2775_probe(struct i2c_client *client,
 	priv->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	priv->exposure = 0x100;
-	priv->gain = 0x100;
+	priv->gain = 0x200;
 	priv->autogain = 1;
 	v4l2_ctrl_handler_init(&priv->hdl, 4);
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
@@ -436,9 +450,9 @@ static int ov2775_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
 			  V4L2_CID_AUTOGAIN, 0, 1, 1, priv->autogain);
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
-			  V4L2_CID_GAIN, 0, 0xffff, 1, priv->gain);
+			  V4L2_CID_GAIN, 0, 0x3fff, 1, priv->gain);
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
-			  V4L2_CID_EXPOSURE, 0, 0xffff, 1, priv->exposure);
+			  V4L2_CID_EXPOSURE, 0, 0x7ff, 1, priv->exposure);
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 1);
 	v4l2_ctrl_new_std(&priv->hdl, &ov2775_ctrl_ops,
