@@ -1144,6 +1144,7 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 		break;
 	case MEDIA_BUS_FMT_SBGGR8_1X8:
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
+	case MEDIA_BUS_FMT_Y8_1X8:
 		vnmc |= VNMC_INF_RAW8 | VNMC_BPS;
 		break;
 	default:
@@ -1180,8 +1181,11 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 		output_is_yuv = true;
 		break;
 	case V4L2_PIX_FMT_GREY:
-		dmr = VNDMR_DTMD_YCSEP | VNDMR_YMODE_Y8;
-		output_is_yuv = true;
+		if (input_is_yuv) {
+			dmr = VNDMR_DTMD_YCSEP | VNDMR_YMODE_Y8;
+			output_is_yuv = true;
+		} else
+			dmr = 0;
 		break;
 	case V4L2_PIX_FMT_ARGB555:
 		dmr = VNDMR_DTMD_ARGB;
@@ -1865,14 +1869,16 @@ static int rcar_vin_set_rect(struct soc_camera_device *icd)
 	    priv->chip == RCAR_V3H) {
 		if ((icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_NV12) &&
 		    (icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_SBGGR8) &&
-		    (icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_SBGGR12)
+		    (icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_SBGGR12) &&
+		    ((icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_GREY) && (icd->current_fmt->code == MEDIA_BUS_FMT_Y8_1X8))
 			&& is_scaling(cam)) {
 			ret = rcar_vin_uds_set(priv, cam);
 			if (ret < 0)
 				return ret;
 		}
 		if ((icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_SBGGR8) ||
-		    (icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_SBGGR12))
+		    (icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_SBGGR12) ||
+		    ((icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_GREY) && (icd->current_fmt->code == MEDIA_BUS_FMT_Y8_1X8)))
 			iowrite32(ALIGN(cam->out_width / 2, 0x10),
 				 priv->base + VNIS_REG);
 		else if (is_scaling(cam) ||
@@ -2296,6 +2302,7 @@ static int rcar_vin_get_formats(struct soc_camera_device *icd, unsigned int idx,
 	case MEDIA_BUS_FMT_RGB888_1X24:
 	case MEDIA_BUS_FMT_SBGGR8_1X8:
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
+	case MEDIA_BUS_FMT_Y8_1X8:
 		if (cam->extra_fmt)
 			break;
 
@@ -2515,10 +2522,15 @@ static int rcar_vin_set_fmt(struct soc_camera_device *icd,
 	case V4L2_PIX_FMT_XBGR32:
 		can_scale = priv->chip != RCAR_E1;
 		break;
+	case V4L2_PIX_FMT_GREY:
+		if (icd->current_fmt->code == MEDIA_BUS_FMT_Y8_1X8)
+			can_scale = false;
+		else
+			can_scale = true;
+		break;
 	case V4L2_PIX_FMT_ABGR32:
 	case V4L2_PIX_FMT_UYVY:
 	case V4L2_PIX_FMT_YUYV:
-	case V4L2_PIX_FMT_GREY:
 	case V4L2_PIX_FMT_RGB565:
 	case V4L2_PIX_FMT_ARGB555:
 	case V4L2_PIX_FMT_NV16:
