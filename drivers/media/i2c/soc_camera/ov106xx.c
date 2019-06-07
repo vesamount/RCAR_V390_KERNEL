@@ -28,6 +28,7 @@
 #include "ox03a.c"
 #include "isx016.c"
 #include "isx019.c"
+#include "ov2311.c"
 
 static enum {
 	ID_OV10635,
@@ -49,12 +50,13 @@ static enum {
 	ID_OX03A,
 	ID_ISX016,
 	ID_ISX019,
+	ID_OV2311,
 } chip_id;
 
 static int ov106xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *did)
 {
-	int ret;
+	int ret = -1;
 	chip_id = -EINVAL;
 
 	ret = ar0231_probe(client, did);
@@ -147,6 +149,12 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
+	ret = ov2311_probe(client, did);
+	if (!ret) {
+		chip_id = ID_OV2311;
+		goto out;
+	}
+
 	ret = imx390_probe(client, did);
 	if (!ret) {
 		chip_id = ID_IMX390;
@@ -236,6 +244,9 @@ static int ov106xx_remove(struct i2c_client *client)
 		break;
 	case ID_ISX019:
 		isx019_remove(client);
+		break;
+	case ID_OV2311:
+		ov2311_remove(client);
 		break;
 	};
 
