@@ -74,27 +74,7 @@
 		regulator-always-on;
 	};
 
-	hub_reset: regulator@9 {
-		compatible = "regulator-fixed";
-		regulator-name = "hub_reset";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpio = <&gpio5 5 0>;
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	hub_power: regulator@10 {
-		compatible = "regulator-fixed";
-		regulator-name = "hub_power";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio6 28 0>;
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	can2_power: regulator@11 {
+	can2_power: regulator@9 {
 		compatible = "regulator-fixed";
 		regulator-name = "can2_power";
 		regulator-min-microvolt = <3300000>;
@@ -103,7 +83,7 @@
 		enable-active-high;
 	};
 
-	can3_power: regulator@12 {
+	can3_power: regulator@10 {
 		compatible = "regulator-fixed";
 		regulator-name = "can3_power";
 		regulator-min-microvolt = <3300000>;
@@ -241,6 +221,12 @@
 		groups = "usb2";
 		function = "usb2";
 	};
+
+	usb30_pins: usb30 {
+		groups = "usb30";
+		function = "usb30";
+	};
+
 
 	can0_pins: can0 {
 		groups = "can0_data_a";
@@ -449,7 +435,30 @@
 			#size-cells = <0>;
 			reg = <4>;
 			/* USB3.0 HUB node(s) */
-			/* addr of TUSB8041 is 100.0100 = 0x44 */
+			tusb8041_44@44 {
+				compatible = "ti,tusb8041";
+				reg = <0x44>;
+				reset-gpios = <&gpio5 5 0>;
+				ti,registers = /bits/ 8 <
+					0x05 0x10
+					0x06 0x0f
+					0x07 0x8f
+					0x08 0x0f
+					0x0a 0x20
+					0x0b 0x80>;
+			};
+			tusb8041_45@45 {
+				compatible = "ti,tusb8041";
+				reg = <0x45>;
+				reset-gpios = <&gpio5 5 0>;
+				ti,registers = /bits/ 8 <
+					0x05 0x10
+					0x06 0x0f
+					0x07 0x8f
+					0x08 0x0f
+					0x0a 0x20
+					0x0b 0x80>;
+			};
 		};
 
 		i2c@1 {
@@ -1594,6 +1603,9 @@
 };
 
 &xhci0 {
+	pinctrl-0 = <&usb30_pins>;
+	pinctrl-names = "default";
+
 	status = "okay";
 };
 
