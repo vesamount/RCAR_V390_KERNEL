@@ -20,16 +20,29 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 
-#define MEDIA_BUS_FORMAT MEDIA_BUS_FMT_YUYV8_2X8
-
 struct dummy_priv {
 	struct v4l2_subdev		sd;
 	struct v4l2_ctrl_handler	hdl;
 	struct media_pad		pad;
 	struct v4l2_rect		rect;
+	u8				id[6];
 	int				max_width;
 	int				max_height;
+	const char *			media_bus_format;
+	int				mbus_format;
 };
+
+static int width = 1920;
+module_param(width, int, 0644);
+MODULE_PARM_DESC(width, " width (default: 1920)");
+
+static int height = 1080;
+module_param(height, int, 0644);
+MODULE_PARM_DESC(height, " height (default: 1080)");
+
+static char *mbus = "yuyv";
+module_param(mbus, charp, 0644);
+MODULE_PARM_DESC(mbus, " MEDIA_BUS_FORMAT (default: YUYV)");
 
 static inline struct dummy_priv *to_dummy(const struct i2c_client *client)
 {
@@ -59,7 +72,7 @@ static int dummy_get_fmt(struct v4l2_subdev *sd,
 
 	mf->width = priv->rect.width;
 	mf->height = priv->rect.height;
-	mf->code = MEDIA_BUS_FORMAT;
+	mf->code = priv->mbus_format;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
@@ -71,8 +84,10 @@ static int dummy_set_fmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *mf = &format->format;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_priv *priv = to_dummy(client);
 
-	mf->code = MEDIA_BUS_FORMAT;
+	mf->code = priv->mbus_format;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 	mf->field = V4L2_FIELD_NONE;
 
@@ -86,10 +101,28 @@ static int dummy_enum_mbus_code(struct v4l2_subdev *sd,
 				struct v4l2_subdev_pad_config *cfg,
 				struct v4l2_subdev_mbus_code_enum *code)
 {
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_priv *priv = to_dummy(client);
+
 	if (code->pad || code->index > 0)
 		return -EINVAL;
 
-	code->code = MEDIA_BUS_FORMAT;
+	code->code = priv->mbus_format;
+
+	return 0;
+}
+
+static int dummy_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_priv *priv = to_dummy(client);
+
+	memcpy(edid->edid, priv->id, 6);
+
+	edid->edid[6] = 0xff;
+	edid->edid[7] = client->addr;
+	edid->edid[8] = 'D' >> 8;
+	edid->edid[9] = 'Y' & 0xff;
 
 	return 0;
 }
@@ -164,9 +197,50 @@ static int dummy_g_mbus_config(struct v4l2_subdev *sd,
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int dummy_g_register(struct v4l2_subdev *sd,
+			    struct v4l2_dbg_register *reg)
+{
+	reg->val = 0;
+	reg->size = sizeof(u16);
+
+	return 0;
+}
+
+static int dummy_s_register(struct v4l2_subdev *sd,
+			    const struct v4l2_dbg_register *reg)
+{
+	return 0;
+}
+#endif
+
+static struct v4l2_subdev_core_ops dummy_core_ops = {
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.g_register = dummy_g_register,
+	.s_register = dummy_s_register,
+#endif
+};
+
 static int dummy_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	return -EINVAL;
+	switch (ctrl->id) {
+	case V4L2_CID_BRIGHTNESS:
+	case V4L2_CID_CONTRAST:
+	case V4L2_CID_SATURATION:
+	case V4L2_CID_HUE:
+	case V4L2_CID_GAMMA:
+	case V4L2_CID_SHARPNESS:
+	case V4L2_CID_AUTOGAIN:
+	case V4L2_CID_GAIN:
+	case V4L2_CID_ANALOGUE_GAIN:
+	case V4L2_CID_EXPOSURE:
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP:
+	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
+		break;
+	}
+
+	return 0;
 }
 
 static const struct v4l2_ctrl_ops dummy_ctrl_ops = {
@@ -179,6 +253,7 @@ static struct v4l2_subdev_video_ops dummy_video_ops = {
 };
 
 static const struct v4l2_subdev_pad_ops dummy_subdev_pad_ops = {
+	.get_edid	= dummy_get_edid,
 	.enum_mbus_code	= dummy_enum_mbus_code,
 	.get_selection	= dummy_get_selection,
 	.set_selection	= dummy_set_selection,
@@ -187,38 +262,107 @@ static const struct v4l2_subdev_pad_ops dummy_subdev_pad_ops = {
 };
 
 static struct v4l2_subdev_ops dummy_subdev_ops = {
+	.core	= &dummy_core_ops,
 	.video	= &dummy_video_ops,
 	.pad	= &dummy_subdev_pad_ops,
 };
+
+static void dummy_otp_id_read(struct i2c_client *client)
+{
+	struct dummy_priv *priv = to_dummy(client);
+
+	/* dummy camera id */
+	priv->id[0] = 'd';
+	priv->id[1] = 'u';
+	priv->id[2] = 'm';
+	priv->id[3] = 'm';
+	priv->id[4] = 'y';
+	priv->id[5] = '.';
+}
+
+static ssize_t dummy_otp_id_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(to_i2c_client(dev));
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_priv *priv = to_dummy(client);
+
+	dummy_otp_id_read(client);
+
+	return snprintf(buf, 32, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+			priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+}
+
+static DEVICE_ATTR(otp_id_dummy, S_IRUGO, dummy_otp_id_show, NULL);
 
 static int dummy_initialize(struct i2c_client *client)
 {
 	struct dummy_priv *priv = to_dummy(client);
 
-	dev_info(&client->dev, "Dummy sensor res %dx%d\n", priv->max_width, priv->max_height);
+	if (strcmp(priv->media_bus_format, "yuyv") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_YUYV8_2X8;
+	else if (strcmp(priv->media_bus_format, "uyvy") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_UYVY8_2X8;
+	else if (strcmp(priv->media_bus_format, "grey") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_Y8_1X8;
+	else if (strcmp(priv->media_bus_format, "rggb8") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SRGGB8_1X8;
+	else if (strcmp(priv->media_bus_format, "bggr8") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SBGGR8_1X8;
+	else if (strcmp(priv->media_bus_format, "grbg8") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SGRBG8_1X8;
+	else if (strcmp(priv->media_bus_format, "rggb12") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SRGGB12_1X12;
+	else if (strcmp(priv->media_bus_format, "bggr12") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SBGGR12_1X12;
+	else if (strcmp(priv->media_bus_format, "grbg12") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SGRBG12_1X12;
+	else if (strcmp(priv->media_bus_format, "rggb14") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SRGGB14_1X14;
+	else if (strcmp(priv->media_bus_format, "bggr14") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SBGGR14_1X14;
+	else if (strcmp(priv->media_bus_format, "grbg14") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SGRBG14_1X14;
+	else if (strcmp(priv->media_bus_format, "rggb16") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SRGGB16_1X16;
+	else if (strcmp(priv->media_bus_format, "bggr16") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SBGGR16_1X16;
+	else if (strcmp(priv->media_bus_format, "grbg16") == 0)
+		priv->mbus_format = MEDIA_BUS_FMT_SGRBG16_1X16;
+	else {
+		v4l_err(client, "failed to parse mbus format (%s)\n", priv->media_bus_format);
+		return -EINVAL;
+	}
+
+	/* Read OTP IDs */
+	dummy_otp_id_read(client);
+
+	dev_info(&client->dev, "Dummy camera sensor, res %dx%d, mbus %s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 priv->max_width, priv->max_height, priv->media_bus_format, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 
 	return 0;
 }
 
 static int dummy_parse_dt(struct device_node *np, struct dummy_priv *priv)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&priv->sd);
-	int err;
+	if (of_property_read_u32(np, "dummy,width", &priv->max_width))
+		priv->max_width = width;
 
-	err = of_property_read_u32(np, "dummy,width", &priv->max_width);
-	if (err) {
-		dev_err(&client->dev, "dummy,width must be defined\n");
-		goto out;
-	}
+	if (of_property_read_u32(np, "dummy,height", &priv->max_height))
+		priv->max_height = height;
 
-	err = of_property_read_u32(np, "dummy,height", &priv->max_height);
-	if (err) {
-		dev_err(&client->dev, "dummy,height must be defined\n");
-		goto out;
-	}
+	if (of_property_read_string(np, "dummy,mbus", &priv->media_bus_format))
+		priv->media_bus_format = mbus;
 
-out:
-	return err;
+	/* module params override dts */
+	if (strcmp(mbus, "yuyv"))
+		priv->media_bus_format = mbus;
+	if (width != 1920)
+		priv->max_width = width;
+	if (height != 1080)
+		priv->max_height = height;
+
+	return 0;
 }
 
 static int dummy_probe(struct i2c_client *client,
@@ -235,6 +379,30 @@ static int dummy_probe(struct i2c_client *client,
 	priv->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	v4l2_ctrl_handler_init(&priv->hdl, 4);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_BRIGHTNESS, 0, 16, 1, 7);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_CONTRAST, 0, 16, 1, 7);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_SATURATION, 0, 7, 1, 2);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_HUE, 0, 23, 1, 12);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_GAMMA, -128, 128, 1, 0);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_SHARPNESS, 0, 10, 1, 3);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_AUTOGAIN, 0, 1, 1, 0);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_GAIN, 1, 0x7ff, 1, 0x200);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_ANALOGUE_GAIN, 1, 0xe, 1, 0xa);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_EXPOSURE, 1, 0x600, 1, 0x144);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_HFLIP, 0, 1, 1, 0);
+	v4l2_ctrl_new_std(&priv->hdl, &dummy_ctrl_ops,
+			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	priv->sd.ctrl_handler = &priv->hdl;
 
 	ret = priv->hdl.error;
@@ -266,6 +434,11 @@ static int dummy_probe(struct i2c_client *client,
 	if (ret)
 		goto cleanup;
 
+	if (device_create_file(&client->dev, &dev_attr_otp_id_dummy) != 0) {
+		dev_err(&client->dev, "sysfs otp_id entry creation failed\n");
+		goto cleanup;
+	}
+
 	return 0;
 
 cleanup:
@@ -281,6 +454,7 @@ static int dummy_remove(struct i2c_client *client)
 {
 	struct dummy_priv *priv = i2c_get_clientdata(client);
 
+	device_remove_file(&client->dev, &dev_attr_otp_id_dummy);
 	v4l2_async_unregister_subdev(&priv->sd);
 	media_entity_cleanup(&priv->sd.entity);
 	v4l2_ctrl_handler_free(&priv->hdl);
