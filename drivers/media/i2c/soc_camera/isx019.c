@@ -483,8 +483,6 @@ static int isx019_parse_dt(struct device_node *np, struct isx019_priv *priv)
 		if (!endpoint)
 			break;
 
-		of_node_put(endpoint);
-
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
 			continue;
@@ -494,6 +492,8 @@ static int isx019_parse_dt(struct device_node *np, struct isx019_priv *priv)
 		    !kstrtouint(strrchr(rendpoint->full_name, '@') + 1, 0, &priv->port))
 			break;
 	}
+
+	of_node_put(endpoint);
 
 	if (!priv->max9286_addr) {
 		dev_err(&client->dev, "deserializer does not present for ISX019\n");
