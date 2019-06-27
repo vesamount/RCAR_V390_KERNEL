@@ -138,6 +138,9 @@ static int ov490_set_regs(struct i2c_client *client,
 			usleep_range(100, 150); /* wait 100 us */
 			reg16_write(client, regs[i].reg, regs[i].val);
 		}
+
+		if (regs[i].reg == 0xFFFE)
+			usleep_range(100, 150); /* wait 100 us */
 	}
 
 	return 0;

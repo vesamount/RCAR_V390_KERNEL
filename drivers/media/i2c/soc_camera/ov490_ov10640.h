@@ -17,6 +17,12 @@ struct ov490_reg {
 };
 
 static const struct ov490_reg ov490_regs_wizard[] = {
+/* Firmware start (some firmwares need this to kick processing) */
+{0xfffd, 0x80},
+{0xfffe, 0x19},
+{0x5000, 0x05},
+{0xfffe, 0x80},
+{0x00c0, 0x3f},
 /* The following registers should match firmware */
 {0xfffd, 0x80},
 {0xfffe, 0x82},
@@ -93,10 +99,12 @@ static const struct ov490_reg ov490_regs_wizard[] = {
 {0xfffe, 0x80},
 {0x00c0, 0xdc},
 #ifdef OV490_DISPLAY_PATTERN
-{0xfffd, 0x80},
 {0xfffe, 0x19},
 {0x5000, 0x02},
 {0xfffe, 0x80},
 {0x00c0, 0xd6},
 #endif
+/* respin register 0x6010 due to added firmware start HOST command */
+{0xfffe, 0x29},
+{0x6010, 0x01},
 };
