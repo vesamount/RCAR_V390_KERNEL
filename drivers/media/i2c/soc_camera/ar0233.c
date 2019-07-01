@@ -436,8 +436,10 @@ static int ar0233_initialize(struct i2c_client *client)
 		ar0233_set_regs(client, ar0233_regs_hdr_mipi_12bit_30fps_rev1);
 		break;
 	case 0x2:
-		if (extclk == 27)
+		if (extclk == 27) {
 			ar0233_regs_hdr_mipi_12bit_30fps_rev2[4] = ar0233_rev2_pll_27_102_4lane_12b;
+			ar0233_regs_seplus_mipi_12bit_30fps_rev2[2] = ar0233_rev2_pll_27_102_4lane_12b;
+		}
 
 		if (strcmp(mode, "hdr") == 0)
 			ar0233_set_regs(client, ar0233_regs_hdr_mipi_12bit_30fps_rev2);
