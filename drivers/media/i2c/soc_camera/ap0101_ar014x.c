@@ -306,6 +306,7 @@ static int ap0101_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct ap0101_priv *priv = to_ap0101(client);
 	int ret = -EINVAL;
+	u16 val = 0;
 
 	if (!priv->init_complete)
 		return 0;
@@ -320,8 +321,26 @@ static int ap0101_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_AUTOGAIN:
 	case V4L2_CID_GAIN:
 	case V4L2_CID_EXPOSURE:
+		break;
 	case V4L2_CID_HFLIP:
+		reg16_read16(client, 0xc846, &val);
+		if (ctrl->val)
+			val |= 0x01;
+		else
+			val &= ~0x01;
+		reg16_write16(client, 0xc846, val);
+		reg16_write16(client, 0xfc00, 0x2800);
+		ret = reg16_write16(client, 0x0040, 0x8100);
+		break;
 	case V4L2_CID_VFLIP:
+		reg16_read16(client, 0xc846, &val);
+		if (ctrl->val)
+			val |= 0x02;
+		else
+			val &= ~0x02;
+		reg16_write16(client, 0xc846, val);
+		reg16_write16(client, 0xfc00, 0x2800);
+		ret = reg16_write16(client, 0x0040, 0x8100);
 		break;
 	}
 
@@ -558,7 +577,7 @@ static int ap0101_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 1);
 	v4l2_ctrl_new_std(&priv->hdl, &ap0101_ctrl_ops,
-			  V4L2_CID_VFLIP, 0, 1, 1, 0);
+			  V4L2_CID_VFLIP, 0, 1, 1, 1);
 	priv->sd.ctrl_handler = &priv->hdl;
 
 	ret = priv->hdl.error;
