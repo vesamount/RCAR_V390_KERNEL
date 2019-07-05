@@ -97,16 +97,16 @@ static u16 ap0101_ar014x_read(struct i2c_client *client, u16 addr)
 	u16 reg_val = 0;
 
 	reg16_write16(client, 0x0040, 0x8d00);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_write16(client, 0xfc00, addr);
 	reg16_write16(client, 0xfc02, 0x0200); /* 2 bytes */
 	reg16_write16(client, 0x0040, 0x8d05);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_write16(client, 0x0040, 0x8d08);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_read16(client, 0xfc00, &reg_val);
 	reg16_write16(client, 0x0040, 0x8d02);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 
 	return reg_val;
 }
@@ -114,16 +114,16 @@ static u16 ap0101_ar014x_read(struct i2c_client *client, u16 addr)
 static void ap0101_ar014x_write(struct i2c_client *client, u16 addr, u16 val)
 {
 	reg16_write16(client, 0x0040, 0x8d00);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_write16(client, 0xfc00, addr);
 	reg16_write16(client, 0xfc02, 0x0200 | (val >> 8)); /* 2 bytes */
 	reg16_write16(client, 0xfc04, (val & 0xff) << 8);
 	reg16_write16(client, 0x0040, 0x8d06);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_write16(client, 0x0040, 0x8d08);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 	reg16_write16(client, 0x0040, 0x8d02);
-	usleep_range(100, 150); /* wait 100 us */
+	usleep_range(1000, 1500); /* wait 1000 us */
 }
 
 static int ap0101_s_stream(struct v4l2_subdev *sd, int enable)
@@ -383,8 +383,8 @@ static void ap0101_otp_id_read(struct i2c_client *client)
 
 	for (i = 0; i < 6; i += 2) {
 		/* first 4 bytes are equal on all ar014x */
-		priv->id[i]     = ap0101_ar014x_read(client, 0x3800 + i + 4) >> 8;
-		priv->id[i + 1] = ap0101_ar014x_read(client, 0x3800 + i + 4) & 0xff;
+		priv->id[i]     = (ap0101_ar014x_read(client, 0x3800 + i + 4) >> 8)   ^ (ap0101_ar014x_read(client, 0x3800 + i + 16) >> 8);
+		priv->id[i + 1] = (ap0101_ar014x_read(client, 0x3800 + i + 4) & 0xff) ^ (ap0101_ar014x_read(client, 0x3800 + i + 16) & 0xff);
 	}
 }
 
