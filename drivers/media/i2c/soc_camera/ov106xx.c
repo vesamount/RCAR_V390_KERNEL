@@ -29,6 +29,7 @@
 #include "isx016.c"
 #include "isx019.c"
 #include "ov2311.c"
+#include "ar0147.c"
 
 static enum {
 	ID_OV10635,
@@ -38,6 +39,7 @@ static enum {
 	ID_AR0132,
 	ID_AR0140,
 	ID_AR0143,
+	ID_AR0147,
 	ID_AR0220,
 	ID_AR0231,
 	ID_AR0233,
@@ -116,6 +118,12 @@ static int ov106xx_probe(struct i2c_client *client,
 	ret = ar0143_probe(client, did);
 	if (!ret) {
 		chip_id = ID_AR0143;
+		goto out;
+	}
+
+	ret = ar0147_probe(client, did);
+	if (!ret) {
+		chip_id = ID_AR0147;
 		goto out;
 	}
 
@@ -208,6 +216,9 @@ static int ov106xx_remove(struct i2c_client *client)
 		break;
 	case ID_AR0143:
 		ar0143_remove(client);
+		break;
+	case ID_AR0147:
+		ar0147_remove(client);
 		break;
 	case ID_AR0220:
 		ar0220_remove(client);

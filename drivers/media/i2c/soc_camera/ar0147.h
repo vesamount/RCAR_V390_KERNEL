@@ -34,3 +34,4 @@ struct ar0147_reg {
 
 #include "ar0147_rev1.h"
 #include "ar0147_rev2.h"
+#include "ar0147_rev3.h"

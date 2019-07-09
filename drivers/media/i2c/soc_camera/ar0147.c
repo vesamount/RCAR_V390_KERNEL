@@ -49,21 +49,33 @@ struct ar0147_priv {
 	int				hts;
 	int				vts;
 	int				frame_preamble;
+	int				trigger;
 };
+
+#ifdef CONFIG_SOC_CAMERA_AR0147
+static int trigger = 0;
+module_param(trigger, int, 0644);
+MODULE_PARM_DESC(trigger, " Trigger gpio number (default: 0 - GPIO0) ");
 
 static char *mode = "hdr";
 module_param(mode, charp, 0644);
 MODULE_PARM_DESC(mode, " Modes linear,hdr,se,seplus (default: hdr)");
+#endif
+static char *mbus = "mipi";
+module_param(mbus, charp, 0644);
+MODULE_PARM_DESC(mbus, " Interfaces mipi,dvp (default: mipi)");
 
 static inline struct ar0147_priv *to_ar0147(const struct i2c_client *client)
 {
 	return container_of(i2c_get_clientdata(client), struct ar0147_priv, sd);
 }
 
+#ifdef CONFIG_SOC_CAMERA_AR0147
 static inline struct v4l2_subdev *to_sd(struct v4l2_ctrl *ctrl)
 {
 	return &container_of(ctrl->handler, struct ar0147_priv, hdl)->sd;
 }
+#endif
 
 static void ar0147_s_port(struct i2c_client *client, int fwd_en)
 {
@@ -463,7 +475,7 @@ static int ar0147_initialize(struct i2c_client *client)
 	reg16_read16(client, AR0147_PID, &pid);
 
 	if (pid != AR0147_VERSION_REG) {
-		dev_dbg(&client->dev, "Product ID error %x\n\n\n", pid);
+		dev_dbg(&client->dev, "Product ID error %x\n", pid);
 		ret = -ENODEV;
 		goto err;
 	}
@@ -482,6 +494,16 @@ static int ar0147_initialize(struct i2c_client *client)
 				ar0147_set_regs(client, ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev2);
 			else if (strcmp(mode, "seplus") == 0)
 				ar0147_set_regs(client, ar0147_regs_seplus_mipi450mbps_12bit_30fps_rev2);
+			else
+				dev_err(&client->dev, "Unsupported mode %s\n", mode);
+			break;
+		case 0x3:
+			if (strcmp(mode, "hdr") == 0)
+				ar0147_set_regs(client, ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev3);
+			else if (strcmp(mode, "seplus1") == 0)
+				ar0147_set_regs(client, ar0147_regs_seplus1_mipi450mbps_12bit_30fps_rev3);
+			else if (strcmp(mode, "seplus2") == 0)
+				ar0147_set_regs(client, ar0147_regs_seplus2_mipi450mbps_12bit_30fps_rev3);
 			else
 				dev_err(&client->dev, "Unsupported mode %s\n", mode);
 			break;
@@ -505,13 +527,31 @@ static int ar0147_initialize(struct i2c_client *client)
 	}
 	client->addr = tmp_addr;
 
+	/* Enable trigger */
+	if (priv->trigger < 4) {
+		reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);/* GPIO_CONTROL1: GPIOn input enable */
+		reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));	/* GPIO_CONTROL2: GPIOn is trigger */
+		reg16_write16(client, 0x30CE, 0x0120);				/* TRIGGER_MODE */
+		//reg16_write16(client, 0x30DC, 0x0120);			/* TRIGGER_DELAY */
+	}
+
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);
+	val |= (1 << 8);				/* GPI pins enable */
 	val |= (1 << 2);
+	if (strcmp(mbus, "mipi") == 0) {
+		val &= ~(1 << 12);			/* HISPI interface enable */
+		val &= ~(1 << 7);			/* Parallel interface disable */
+		val &= ~(1 << 6);			/* Parallel pins high-impedance state */
+	} else if (strcmp(mbus, "dvp") == 0) {
+		val |= (1 << 12);			/* HISPI interface disable */
+		val |= (1 << 7);			/* Parallel interface enable */
+		val |= (1 << 6);			/* Parallel pins drive */
+	}
 	reg16_write16(client, 0x301a, val);
 
-	dev_info(&client->dev, "ar0147 PID %x (rev %x), res %dx%d, mode=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, rev, AR0147_MAX_WIDTH, AR0147_MAX_HEIGHT, mode, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0147 PID %x (rev %x), res %dx%d, mode=%s, mbus=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev, AR0147_MAX_WIDTH, AR0147_MAX_HEIGHT, mode, mbus, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	ar0147_s_port(client, 0);
 
@@ -529,6 +569,9 @@ static int ar0147_parse_dt(struct device_node *np, struct ar0147_priv *priv)
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
 		if (!endpoint)
 			break;
+
+		if (of_property_read_u32(endpoint, "trigger", &priv->trigger))
+			priv->trigger = 0;
 
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
@@ -575,6 +618,10 @@ static int ar0147_parse_dt(struct device_node *np, struct ar0147_priv *priv)
 		reg8_write(client, 0x6e, 0xa9);				/* GPIO0 - reset, GPIO1 - fsin */
 	}
 	client->addr = tmp_addr;
+
+	/* module params override dts */
+	if (trigger)
+		priv->trigger = trigger;
 
 	mdelay(10);
 
