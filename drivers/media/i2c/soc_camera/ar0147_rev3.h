@@ -490,6 +490,36 @@ static const struct ar0147_reg ar0147_rev3_Sensor_Setup[] = {
 { }
 }; /* Sensor_Setup */
 
+static const struct ar0147_reg ar0147_rev3_Super_Exposure_Mode_1_Setup[] = {
+{0x3082, 0x0004}, // OPERATION_MODE_CTRL
+{0x30BA, 0x1002}, // DIGITAL_CTRL
+{0x3C06, 0x000C}, //
+{0x3C08, 0x1100}, //
+{0x3116, 0x0000}, // HDR_CONTROL3
+{0x3088, 0x0480}, //
+{0x3510, 0x814F}, //
+{0x351E, 0x0100}, //
+{0x32EA, 0x3CA9}, //
+{0x32EC, 0x7281}, //
+{0x3212, 0x0000}, // COARSE_INTEGRATION_TIME2
+{0x3238, 0x8222}, // EXPOSURE_RATIO
+{0x33E2, 0x0910}, // SAMPLE_CTRL
+{0x3362, 0x0001}, // DC_GAIN
+{0x322A, 0x0539}, // FINE_INTEGRATION_CTRL
+{0x3014, 0x0137}, // FINE_INTEGRATION_TIME_
+{0x1008, 0x0137}, // FINE_INTEGRATION_TIME_MIN
+{0x3230, 0x00DB}, // FINE_CORRECTION
+{0x32D0, 0x3A02}, //
+{0x32D2, 0x3508}, //
+{0x32D4, 0x3702}, //
+{0x32D6, 0x3C04}, //
+{0x32DC, 0x370A}, //
+{0x3528, 0x99EE}, //
+{0x30FE, 0x0040}, // NOISE_PEDESTAL
+{0x3782, 0x0000}, //
+{ }
+}; /* Super_Exposure_Mode_1_Setup */
+
 static const struct ar0147_reg ar0147_rev3_Super_Exposure_Plus_T2_Mode_1_Setup[] = {
 {0x3C06, 0x2024}, // CONFIGURE_BUFFERS1
 {0x3C08, 0x2100}, // CONFIGURE_BUFFERS2
@@ -763,6 +793,29 @@ static const struct ar0147_reg ar0147_rev3_3exp_30FPS_Timing_and_Exposure[] = {
 { }
 }; /* 3exp_30FPS_Timing_and_Exposure */
 
+static const struct ar0147_reg ar0147_rev3_SE_Mode_1_30FPS_Timing_and_Exposure[] = {
+{0x3082, 0x0004}, // OPERATION_MODE_CTRL: 2exp
+{0x30BA, 0x1002}, // DIGITAL_CTRL: 3exp max
+
+/* Row and Pixel Timing */
+{0x300C, AR0147_SENSOR_WIDTH + 52}, // LINE_LENGTH_PCK_ (1396)
+{0x300A, AR0147_SENSOR_HEIGHT + 226}, // FRAME_LENGTH_LINES_
+{0x3042, 0x0000}, // EXTRA_DELAY
+
+/* Exposure Settings */
+{0x3238, 0x8222}, // EXPOSURE_RATIO: separate integartion time!?
+{0x3012, 0x0300}, // COARSE_INTEGRATION_TIME_
+
+{0x322A, 0x0139}, // FINE_INTEGRATION_CTRL
+{0x3014, 0x0123}, // FINE_INTEGRATION_TIME_
+{0x3362, 0x0001}, // DC_GAIN
+{0x3366, 0xFFF7}, // ANALOG_GAIN
+
+{0x30B0, 0x980C}, // DIGITAL_TEST (MIPI ...)
+{0x32EC, 0x7281},
+{ }
+}; /* SE_Mode_1_30FPS_Timing_and_Exposure */
+
 static const struct ar0147_reg ar0147_rev3_SE_Plus_T2_Mode_1_30FPS_Timing_and_Exposure[] = {
 {0x3082, 0x0008}, // OPERATION_MODE_CTRL: 3exp
 {0x30BA, 0x1003}, // DIGITAL_CTRL: 4exp max
@@ -813,6 +866,16 @@ static const struct ar0147_reg ar0147_rev3_SE_Plus_T2_Mode_2_50MHz_29FPS_Timing_
 { }
 }; /* SE_Plus_T2_Mode_2_30FPS_Timing_and_Exposure */
 
+static const struct ar0147_reg ar0147_rev3_Serial_4_Lane_16_to_12_bit_Output[] = {
+{0x31D0, 0x0001}, // COMPANDING
+{0x31AE, 0x0304}, // SERIAL_FORMAT: HISPI 4-lanes
+{0x31AC, 0x100C}, // DATA_FORMAT_BITS: ADC16, RAW12
+//{0x301A, 0x0118}, // RESET_REGISTER
+{0x301A, 0x0018}, // RESET_REGISTER (MIPI)
+//{0x301A, 0x11d8}, // RESET_REGISTER (DVP)
+{ }
+}; /* Serial_4_Lane_16_to_12_bit_Output */
+
 static const struct ar0147_reg ar0147_rev3_Serial_4_Lane_20_to_12_bit_Output[] = {
 {0x31D0, 0x0001}, // COMPANDING
 {0x31AE, 0x0304}, // SERIAL_FORMAT: HISPI 4-lanes
@@ -853,6 +916,20 @@ static const struct ar0147_reg *ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev3[] =
 	ar0147_rev3_Full_Res_FOV,
 	ar0147_rev3_3exp_30FPS_Timing_and_Exposure,
 	ar0147_rev3_Serial_4_Lane_20_to_12_bit_Output,
+	ar0147_rev3_MIPI_12_bit_450MBps_Settings,
+	NULL
+};
+
+/* Super-Exposure Mode 1, Full Resolution, MIPI 450MBPS 4 lane 12-bit, 30FPS, XMCLK=24MHz */
+static const struct ar0147_reg *ar0147_regs_se_mipi450mbps_12bit_30fps_rev3[] = {
+	ar0147_rev3_Reset,
+	ar0147_rev3_Sensor_Setup,
+	ar0147_rev3_Super_Exposure_Mode_1_Setup,
+	ar0147_rev3_Serial_12_bit_Timing_Setup,
+	ar0147_rev3_Readout_Mode_Configuration,
+	ar0147_rev3_Full_Res_FOV,
+	ar0147_rev3_SE_Mode_1_30FPS_Timing_and_Exposure,
+	ar0147_rev3_Serial_4_Lane_16_to_12_bit_Output,
 	ar0147_rev3_MIPI_12_bit_450MBps_Settings,
 	NULL
 };

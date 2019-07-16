@@ -492,6 +492,8 @@ static int ar0147_initialize(struct i2c_client *client)
 		case 0x2:
 			if (strcmp(mode, "hdr") == 0)
 				ar0147_set_regs(client, ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev2);
+			else if (strcmp(mode, "se") == 0)
+				ar0147_set_regs(client, ar0147_regs_se_mipi450mbps_12bit_30fps_rev2);
 			else if (strcmp(mode, "seplus") == 0)
 				ar0147_set_regs(client, ar0147_regs_seplus_mipi450mbps_12bit_30fps_rev2);
 			else
@@ -500,6 +502,8 @@ static int ar0147_initialize(struct i2c_client *client)
 		case 0x3:
 			if (strcmp(mode, "hdr") == 0)
 				ar0147_set_regs(client, ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev3);
+			else if (strcmp(mode, "se") == 0)
+				ar0147_set_regs(client, ar0147_regs_se_mipi450mbps_12bit_30fps_rev3);
 			else if (strcmp(mode, "seplus1") == 0)
 				ar0147_set_regs(client, ar0147_regs_seplus1_mipi450mbps_12bit_30fps_rev3);
 			else if (strcmp(mode, "seplus2") == 0)

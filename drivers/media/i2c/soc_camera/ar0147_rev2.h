@@ -485,6 +485,78 @@ static const struct ar0147_reg ar0147_rev2_Sensor_Setup[] = {
 { }
 }; /* Sensor_Setup */
 
+static const struct ar0147_reg ar0147_rev2_Super_Exposure_Default_Setup[] = {
+{0x3082, 0x0004}, // OPERATION_MODE_CTRL
+{0x30BA, 0x1002}, // DIGITAL_CTRL
+{0x3C06, 0x000C},
+{0x3C08, 0x1100},
+{0x3116, 0x0000}, // HDR_CONTROL3
+{0x3088, 0x0480},
+{0x3510, 0x814F},
+{0x351E, 0x0100},
+{0x32EA, 0x3CA9},
+{0x32EC, 0x7281},
+{0x3212, 0x0000}, // COARSE_INTEGRATION_TIME2
+{0x3238, 0x8222}, // EXPOSURE_RATIO
+{0x33E2, 0x0910}, // SAMPLE_CTRL
+{0x3362, 0x0001}, // DC_GAIN
+{0x322A, 0x0539}, // FINE_INTEGRATION_CTRL
+{0x3014, 0x0123}, // FINE_INTEGRATION_TIME_
+{0x1008, 0x0123}, // FINE_INTEGRATION_TIME_MIN
+{0x3230, 0x00C7}, // FINE_CORRECTION
+{0x32D0, 0x3A02},
+{0x32D2, 0x3508},
+{0x32D4, 0x3702},
+{0x32D6, 0x3C04},
+{0x32DC, 0x370A},
+{0x3528, 0x99EE},
+{0x30FE, 0x0040}, // NOISE_PEDESTAL
+{0x3782, 0x0000},
+
+/* Other_Super_Exposure_Setup */
+{0x3536, 0xFF20},
+{0x3520, 0x0800},
+{0x3522, 0x0008},
+{0x3536, 0xFF20},
+{0x350C, 0x034A},
+{0x350E, 0x051C},
+{0x3540, 0xC62C},
+{0x3542, 0x4B4B},
+{0x3544, 0x4B46},
+{0x3546, 0x5A5A},
+{0x3548, 0x6400},
+{0x354A, 0x007F},
+{0x3524, 0x0600},
+{0x3372, 0xF40F}, // DBLC_FS0_CONTROL
+{0x3180, 0x0188},
+{0x3280, 0x0CB2}, // T1_BARRIER_C0
+{0x3282, 0x0CB2}, // T1_BARRIER_C1
+{0x3284, 0x0CB2}, // T1_BARRIER_C2
+{0x3286, 0x0CB2}, // T1_BARRIER_C3
+{0x3288, 0x0CB2}, // T2_BARRIER_C0
+{0x328A, 0x0CB2}, // T2_BARRIER_C1
+{0x328C, 0x0CB2}, // T2_BARRIER_C2
+{0x328E, 0x0CB2}, // T2_BARRIER_C3
+{0x3290, 0x0CB2}, // T3_BARRIER_C0
+{0x3292, 0x0CB2}, // T3_BARRIER_C1
+{0x3294, 0x0CB2}, // T3_BARRIER_C2
+{0x3296, 0x0CB2}, // T3_BARRIER_C3
+{0x3298, 0x0CB2}, // T4_BARRIER_C0
+{0x329A, 0x0CB2}, // T4_BARRIER_C1
+{0x329C, 0x0CB2}, // T4_BARRIER_C2
+{0x329E, 0x0CB2}, // T4_BARRIER_C3
+{0x3108, 0x0CB1},
+{0x312A, 0x83E8},
+{0x3C82, 0x0FFF},
+{0x3102, 0x6100},
+{0x3104, 0x6100},
+{0x3106, 0x6100},
+{0x3120, 0x0AF0},
+{0x3122, 0x0CB2},
+/* Other_Super_Exposure_Setup */
+{ }
+}; /* Super_Exposure_Default_Setup */
+
 static const struct ar0147_reg ar0147_rev2_Super_Exposure_Default_Plus_T2_Setup[] = {
 {0x3082, 0x0008}, // OPERATION_MODE_CTRL
 {0x30BA, 0x1003}, // DIGITAL_CTRL
@@ -651,6 +723,30 @@ static const struct ar0147_reg ar0147_rev2_3exp_30FPS_Timing_and_Exposure[] = {
 { }
 }; /* 3exp_30FPS_Timing_and_Exposure */
 
+static const struct ar0147_reg ar0147_rev2_SE_Default_Mode_30FPS_Timing_and_Exposure[] = {
+{0x3082, 0x0004}, // OPERATION_MODE_CTRL: 2exp
+{0x30BA, 0x1002}, // DIGITAL_CTRL: 3exp max
+
+/* Row and Pixel Timing */
+{0x300C, AR0147_SENSOR_WIDTH + 52}, // LINE_LENGTH_PCK_ (1396)
+{0x300A, AR0147_SENSOR_HEIGHT + 226}, // FRAME_LENGTH_LINES_
+{0x3042, 0x0000}, // EXTRA_DELAY
+
+/* Exposure Settings */
+{0x3238, 0x8222}, // EXPOSURE_RATIO: separate integartion time!?
+{0x3012, 0x0300}, // COARSE_INTEGRATION_TIME_
+
+{0x322A, 0x0139}, // FINE_INTEGRATION_CTRL
+{0x3014, 0x0123}, // FINE_INTEGRATION_TIME_
+{0x3362, 0x0001}, // DC_GAIN
+{0x3366, 0xFFF7}, // ANALOG_GAIN
+{0x3364, 0x01CF}, // DCG_TRIM
+
+{0x30B0, 0x980C}, // DIGITAL_TEST (MIPI ...)
+{0x32EC, 0x7281},
+{ }
+}; /* SE_Default_Mode_30FPS_Timing_and_Exposure */
+
 static const struct ar0147_reg ar0147_rev2_SE_Plus_T2_Default_Mode_30FPS_Timing_and_Exposure[] = {
 {0x3082, 0x0008}, // OPERATION_MODE_CTRL: 3exp
 {0x30BA, 0x1003}, // DIGITAL_CTRL: 4exp max
@@ -777,6 +873,21 @@ static const struct ar0147_reg *ar0147_regs_hdr_mipi450mbps_12bit_30fps_rev2[] =
 	ar0147_rev2_3exp_30FPS_Timing_and_Exposure,
 	ar0147_rev2_Serial_4_Lane_20_to_12_bit_Output,
 	ar0147_rev2_MIPI_12_bit_450MBps_Settings,
+	NULL
+};
+
+/* Super-Exposure, Full Resolution, MIPI 450MBPS 4 lane 12-bit, 30FPS, XMCLK=24MHz */
+static const struct ar0147_reg *ar0147_regs_se_mipi450mbps_12bit_30fps_rev2[] = {
+	ar0147_rev2_Reset,
+	ar0147_rev2_Sensor_Setup,
+	ar0147_rev2_Super_Exposure_Default_Setup,
+	ar0147_rev2_Serial_12_bit_Timing_Setup,
+	ar0147_rev2_Readout_Mode_Configuration,
+	ar0147_rev2_Full_Res_FOV,
+	ar0147_rev2_SE_Default_Mode_30FPS_Timing_and_Exposure,
+	ar0147_rev2_Serial_4_Lane_20_to_12_bit_Output,
+	ar0147_rev2_MIPI_12_bit_450MBps_Settings,
+	ar0147_rev2_shutter_and_booster_settings,
 	NULL
 };
 
