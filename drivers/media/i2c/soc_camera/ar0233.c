@@ -328,6 +328,12 @@ static int ar0233_s_ctrl(struct v4l2_ctrl *ctrl)
 		else
 			val &= ~(1 << 15);
 		ret |= reg16_write16(client, 0x3040, val);
+		ret = reg16_read16(client, 0x350e, &val);
+		if (ctrl->val)
+			val |= (1 << 0);
+		else
+			val &= ~(1 << 0);
+		ret |= reg16_write16(client, 0x350e, val);
 		break;
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
 		ret = 0;

@@ -93,7 +93,7 @@ static int ar0231_set_window(struct v4l2_subdev *sd)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct ar0231_priv *priv = to_ar0231(client);
 
-	dev_err(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
+	dev_dbg(&client->dev, "L=%d T=%d %dx%d\n", priv->rect.left, priv->rect.top, priv->rect.width, priv->rect.height);
 
 	/* horiz crop start */
 	reg16_write16(client, 0x3004, priv->rect.left + AR0231_X_START);

@@ -2266,6 +2266,7 @@ static const struct ar0233_reg ar0233_rev2_O1_Recommended_Defaults_SE_T1_LIN_T2[
 
 static const struct ar0233_reg ar0233_rev2_disable_embed_data_stat[] = {
 {0x3040, 0xC000}, //Embedded stat2 and data2 rows, hflip/vflip=1
+{0x350e, 0x2089}, // bit0 must be set for vflip=1
 #ifdef AR0233_EMBEDDED_LINE
 {0x3064, 0x0180}, // SMIA_TEST: enable emb data and stats
 #else
