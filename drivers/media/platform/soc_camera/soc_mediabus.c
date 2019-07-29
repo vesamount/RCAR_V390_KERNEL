@@ -392,6 +392,16 @@ static const struct soc_mbus_lookup mbus_fmt[] = {
 		.order			= SOC_MBUS_ORDER_LE,
 		.layout			= SOC_MBUS_LAYOUT_PACKED,
 	},
+}, {
+	.code = MEDIA_BUS_FMT_SBGGR16_1X16,
+	.fmt = {
+		.fourcc			= V4L2_PIX_FMT_SBGGR16,
+		.name			= "Bayer 16 RGGB",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
+		.layout			= SOC_MBUS_LAYOUT_PACKED,
+	},
 },
 };
 
