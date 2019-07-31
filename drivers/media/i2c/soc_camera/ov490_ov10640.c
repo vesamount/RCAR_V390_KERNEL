@@ -54,6 +54,7 @@ struct ov490_priv {
 	int				blue;
 	int				awb;
 	int				dvp_order;
+	int				group;
 	/* serializers */
 	int				max9286_addr;
 	int				max9271_addr;
@@ -76,6 +77,10 @@ MODULE_PARM_DESC(max_width, " Fixed sensor width");
 static int max_height;
 module_param(max_height, int, 0644);
 MODULE_PARM_DESC(max_height, " Fixed sensor height");
+
+static int group = 0;
+module_param(group, int, 0644);
+MODULE_PARM_DESC(group, " group number (0 - does not apply)");
 
 static inline struct ov490_priv *to_ov490(const struct i2c_client *client)
 {
@@ -858,6 +863,19 @@ again:
 			goto again;
 	}
 
+	if (priv->group) {
+		/* switch to group# */
+		reg16_write(client, 0xFFFD, 0x80);
+		reg16_write(client, 0xFFFE, 0x19);
+		usleep_range(100, 150); /* wait 100 us */
+		reg16_write(client, 0x5000, priv->group);
+		reg16_write(client, 0xFFFE, 0x80);
+		usleep_range(100, 150); /* wait 100 us */
+		reg16_write(client, 0xc0, 0x3f);
+
+		mdelay(30);
+	}
+
 	/* read resolution used by current firmware */
 	reg16_write(client, 0xFFFD, 0x80);
 	reg16_write(client, 0xFFFE, 0x82);
@@ -903,6 +921,7 @@ static int ov490_parse_dt(struct device_node *np, struct ov490_priv *priv)
 			break;
 
 		of_property_read_u32(endpoint, "dvp-order", &priv->dvp_order);
+		of_property_read_u32(endpoint, "group", &priv->group);
 
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
@@ -978,6 +997,8 @@ static int ov490_parse_dt(struct device_node *np, struct ov490_priv *priv)
 		priv->max_height = max_height;
 		priv->is_fixed_sensor = true;
 	}
+	if (group)
+		priv->group = group;
 
 	return 0;
 }
