@@ -320,7 +320,7 @@ static int ov10640_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_GAIN:
 		reg16_write(client, 0x30EC, ctrl->val);		// L
 		reg16_write(client, 0x30EE, ctrl->val);		// S
-		reg16_write(client, 0x30F0, ctrl->val);		// VS
+		ret = reg16_write(client, 0x30F0, ctrl->val);	// VS
 		break;
 	case V4L2_CID_ANALOGUE_GAIN:
 		reg16_read(client, 0x30EB, &val);
@@ -328,7 +328,7 @@ static int ov10640_s_ctrl(struct v4l2_ctrl *ctrl)
 		val |= ((ctrl->val / 2) << 0);	// L
 		val |= (ctrl->val << 2);	// S
 		val |= ((ctrl->val / 2) << 4);	// VS
-		reg16_write(client, 0x30EB, val);
+		ret = reg16_write(client, 0x30EB, val);
 		break;
 	case V4L2_CID_EXPOSURE:
 		val16 = 0xfff - ctrl->val;
@@ -337,16 +337,18 @@ static int ov10640_s_ctrl(struct v4l2_ctrl *ctrl)
 		reg16_write(client, 0x30E7, val16 & 0xff);	// L
 
 		reg16_write(client, 0x30E8, val16 >> 8);	// S
-		reg16_write(client, 0x30E9, val16 & 0xff);	// S
+		ret = reg16_write(client, 0x30E9, val16 & 0xff);// S
 
-//		reg16_write(client, 0x30EA, val >> 8);	// VS - fractional ...
+//		ret = reg16_write(client, 0x30EA, val >> 8);	// VS - fractional ...
 		break;
+#if 0
 	case V4L2_CID_EXPOSURE_AUTO:
 		reg16_read(client, 0x30FA, &val);
 		val &= ~(0x1 << 6);
 		val |= (ctrl->val << 6);
-		reg16_write(client, 0x30FA, val);
+		ret = reg16_write(client, 0x30FA, val);
 		break;
+#endif
 	case V4L2_CID_HFLIP:
 		reg16_read(client, 0x3128, &val);
 		val &= ~(0x1 << 0);
@@ -585,8 +587,10 @@ static int ov10640_probe(struct i2c_client *client,
 			  V4L2_CID_ANALOGUE_GAIN, 0, 3, 1, 1);
 	v4l2_ctrl_new_std(&priv->hdl, &ov10640_ctrl_ops,
 			  V4L2_CID_EXPOSURE, 0, 0xfff, 1, 0x448);
+#if 0
 	v4l2_ctrl_new_std(&priv->hdl, &ov10640_ctrl_ops,
 			  V4L2_CID_EXPOSURE_AUTO, 0, 1, 1, 0);
+#endif
 	v4l2_ctrl_new_std(&priv->hdl, &ov10640_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 1);
 	v4l2_ctrl_new_std(&priv->hdl, &ov10640_ctrl_ops,
