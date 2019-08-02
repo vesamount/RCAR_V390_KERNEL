@@ -1075,6 +1075,18 @@ static int soc_camera_g_edid(struct file *file, void *fh,
 	return -ENOIOCTLCMD;
 }
 
+static long soc_camera_default(struct file *file, void *fh,
+			     bool valid_prio, unsigned int cmd, void *arg)
+{
+	struct soc_camera_device *icd = video_drvdata(file);
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
+
+	if (ici->ops->custom_ioctl)
+		return ici->ops->custom_ioctl(icd, valid_prio, cmd, arg);
+
+	return -ENOIOCTLCMD;
+}
+
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int soc_camera_g_register(struct file *file, void *priv,
 				 struct v4l2_dbg_register *reg)
@@ -2092,6 +2104,7 @@ static const struct v4l2_ioctl_ops soc_camera_ioctl_ops = {
 	.vidioc_g_parm		 = soc_camera_g_parm,
 	.vidioc_s_parm		 = soc_camera_s_parm,
 	.vidioc_g_edid		 = soc_camera_g_edid,
+	.vidioc_default		 = soc_camera_default,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.vidioc_g_register	= soc_camera_g_register,
 	.vidioc_s_register	= soc_camera_s_register,
