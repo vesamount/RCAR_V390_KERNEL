@@ -389,9 +389,9 @@ static const struct ar0231_reg ar0231_regs_wizard_rev7[] = {
 {0x300C, AR0231_SENSOR_WIDTH + 550}, // Line_length_pck
 {0x3012, 0x144}, //Integration_time
 
-#if 1 /* Enable trigger input */
-{0x340A, 0x00E0}, // GPIO_CONTROL1: GPIO1 is trigger
-{0x340C, 0x0002}, // GPIO_CONTROL2: GPIO1 is trigger
+#if 0 /* Enable trigger input */
+{0x340A, 0x00E0}, // GPIO_CONTROL1: GPIO0 is trigger
+{0x340C, 0x0002}, // GPIO_CONTROL2: GPIO0 is trigger
 {0x30CE, 0x0120}, // TRIGGER_MODE
 //{0x30DC, 0x0120}, // TRIGGER_DELAY
 {0x301A, 0x0118}, // GPI pins enable

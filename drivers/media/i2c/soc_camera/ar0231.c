@@ -45,7 +45,12 @@ struct ar0231_priv {
 	int				port;
 	int				gpio_resetb;
 	int				gpio_fsin;
+	int				trigger;
 };
+
+static int trigger = 0;
+module_param(trigger, int, 0644);
+MODULE_PARM_DESC(trigger, " Trigger gpio number (default: 0 - GPIO0) ");
 
 static inline struct ar0231_priv *to_ar0231(const struct i2c_client *client)
 {
@@ -436,13 +441,21 @@ static int ar0231_initialize(struct i2c_client *client)
 	if (priv->max9286_addr)
 		ar0231_set_regs(client, ar0231_regs_wizard_rev6_dvp, ARRAY_SIZE(ar0231_regs_wizard_rev6_dvp));
 
+	/* Enable trigger */
+	if (priv->trigger >= 0 && priv->trigger < 4) {
+		reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);/* GPIO_CONTROL1: GPIOn input enable */
+		reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));	/* GPIO_CONTROL2: GPIOn is trigger */
+		reg16_write16(client, 0x30CE, 0x0120);				/* TRIGGER_MODE */
+		//reg16_write16(client, 0x30DC, 0x0120);			/* TRIGGER_DELAY */
+	}
+
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);
 	val |= (1 << 2);
 	reg16_write16(client, 0x301a, val);
 
-	dev_info(&client->dev, "ar0231 PID %x (rev %x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, rev, AR0231_MAX_WIDTH, AR0231_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0231 PID %x (rev%x), res %dx%d, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev & 0xf, AR0231_MAX_WIDTH, AR0231_MAX_HEIGHT, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	ar0231_s_port(client, 0);
 	return ret;
@@ -459,6 +472,9 @@ static int ar0231_parse_dt(struct device_node *np, struct ar0231_priv *priv)
 		endpoint = of_graph_get_next_endpoint(np, endpoint);
 		if (!endpoint)
 			break;
+
+		if (of_property_read_u32(endpoint, "trigger", &priv->trigger))
+			priv->trigger = 0;
 
 		rendpoint = of_parse_phandle(endpoint, "remote-endpoint", 0);
 		if (!rendpoint)
@@ -501,6 +517,10 @@ static int ar0231_parse_dt(struct device_node *np, struct ar0231_priv *priv)
 		reg8_write(client, 0x65, tmp_addr << 1);		/* Sensor translated I2C address */
 	}
 	client->addr = tmp_addr;
+
+	/* module params override dts */
+	if (trigger)
+		priv->trigger = trigger;
 
 	return 0;
 }

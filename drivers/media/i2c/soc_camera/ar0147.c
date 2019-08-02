@@ -532,7 +532,7 @@ static int ar0147_initialize(struct i2c_client *client)
 	client->addr = tmp_addr;
 
 	/* Enable trigger */
-	if (priv->trigger < 4) {
+	if (priv->trigger >= 0 && priv->trigger < 4) {
 		reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);/* GPIO_CONTROL1: GPIOn input enable */
 		reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));	/* GPIO_CONTROL2: GPIOn is trigger */
 		reg16_write16(client, 0x30CE, 0x0120);				/* TRIGGER_MODE */
@@ -554,8 +554,8 @@ static int ar0147_initialize(struct i2c_client *client)
 	}
 	reg16_write16(client, 0x301a, val);
 
-	dev_info(&client->dev, "ar0147 PID %x (rev %x), res %dx%d, mode=%s, mbus=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, rev, AR0147_MAX_WIDTH, AR0147_MAX_HEIGHT, mode, mbus, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0147 PID %x (rev%x), res %dx%d, mode=%s, mbus=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev & 0xf, AR0147_MAX_WIDTH, AR0147_MAX_HEIGHT, mode, mbus, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	ar0147_s_port(client, 0);
 

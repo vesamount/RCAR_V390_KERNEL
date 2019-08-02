@@ -44,10 +44,6 @@ struct ar0233_priv {
 	int				trigger;
 };
 
-static int trigger = 0;
-module_param(trigger, int, 0644);
-MODULE_PARM_DESC(trigger, " Trigger gpio number (default: 0 - GPIO0) ");
-
 static int extclk = 23;
 module_param(extclk, int, 0644);
 MODULE_PARM_DESC(extclk, " EXTCLK value in MHz (default: 23) ");
@@ -459,10 +455,12 @@ static int ar0233_initialize(struct i2c_client *client)
 	}
 
 	/* Enable trigger */
-	reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);	/* GPIO_CONTROL1: GPIOn input enable */
-	reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));		/* GPIO_CONTROL2: GPIOn is trigger */
-	reg16_write16(client, 0x30CE, 0x0120);					/* TRIGGER_MODE */
-	//reg16_write16(client, 0x30DC, 0x0120);				/* TRIGGER_DELAY */
+	if (priv->trigger >= 0 && priv->trigger < 4) {
+		reg16_write16(client, 0x340A, (~(BIT(priv->trigger) << 4)) & 0xf0);	/* GPIO_CONTROL1: GPIOn input enable */
+		reg16_write16(client, 0x340C, (0x2 << 2*priv->trigger));		/* GPIO_CONTROL2: GPIOn is trigger */
+		reg16_write16(client, 0x30CE, 0x0120);					/* TRIGGER_MODE */
+		//reg16_write16(client, 0x30DC, 0x0120);				/* TRIGGER_DELAY */
+	}
 
 	/* Enable stream */
 	reg16_read16(client, 0x301a, &val);	// read inital reset_register value
@@ -470,8 +468,8 @@ static int ar0233_initialize(struct i2c_client *client)
 	val |= (1 << 2);			// Set streamOn bit
 	reg16_write16(client, 0x301a, val);	// Start Streaming
 
-	dev_info(&client->dev, "ar0233 PID %x (rev %x), res %dx%d, mode=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 pid, rev, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, mode, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
+	dev_info(&client->dev, "ar0233 PID %x (rev%x), res %dx%d, mode=%s, OTP_ID %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 pid, rev & 0xf, AR0233_MAX_WIDTH, AR0233_MAX_HEIGHT, mode, priv->id[0], priv->id[1], priv->id[2], priv->id[3], priv->id[4], priv->id[5]);
 err:
 	return ret;
 }
