@@ -65,12 +65,16 @@ static void gw5200_s_port(struct i2c_client *client, int fwd_en)
 {
 	struct gw5200_priv *priv = to_gw5200(client);
 	int tmp_addr;
+	u8 val = 0;
 
 	if (priv->max9286_addr) {
 		tmp_addr = client->addr;
 		client->addr = priv->max9286_addr;				/* Deserializer I2C address */
-		reg8_write(client, 0x0a, fwd_en ? 0x11 << priv->port : 0);	/* Enable/disable reverse/forward control for this port */
-		usleep_range(5000, 5500);					/* wait 5ms */
+		reg8_read(client, 0x1e, &val);					/* read max928X ID */
+		if (val == MAX9286_ID) {
+			reg8_write(client, 0x0a, fwd_en ? 0x11 << priv->port : 0); /* Enable/disable reverse/forward control for this port */
+			usleep_range(5000, 5500);				/* wait 5ms */
+		}
 		client->addr = tmp_addr;
 	};
 }
