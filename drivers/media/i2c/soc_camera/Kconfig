@@ -89,6 +89,12 @@ config SOC_CAMERA_MAX9286
 	help
 	  This is a MAXIM max9286 GMSL driver
 
+config SOC_CAMERA_MAX9288
+	tristate "max9288 GMSL support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a MAXIM max9288 GMSL driver
+
 config SOC_CAMERA_TI9X4
 	tristate "ti9x4 FPDLink3 support"
 	depends on SOC_CAMERA && I2C

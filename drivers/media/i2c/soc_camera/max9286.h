@@ -1,7 +1,7 @@
 /*
- * MAXIM max9286-max9271 GMSL driver include file
+ * MAXIM max9286/max9288 GMSL driver include file
  *
- * Copyright (C) 2015-2017 Cogent Embedded, Inc.
+ * Copyright (C) 2015-2019 Cogent Embedded, Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -9,8 +9,8 @@
  * option) any later version.
  */
 
-#ifndef _MAX9286_MAX9271_H
-#define _MAX9286_MAX9271_H
+#ifndef _MAX92XX_H
+#define _MAX92XX_H
 
 //#define DEBUG
 #ifdef DEBUG
@@ -26,6 +26,8 @@
 #define MAX96705_ID		0x41
 #define MAX96707_ID		0x45 /* MAX96715: there is no HS pin */
 #define MAX9286_ID		0x40
+#define MAX9288_ID		0x2A
+#define MAX9290_ID		0x2C
 #define BROADCAST		0x6f
 
 static inline int reg8_read(struct i2c_client *client, u8 reg, u8 *val)
@@ -177,52 +179,7 @@ static inline int reg16_write16(struct i2c_client *client, u16 reg, u16 val)
 	return ret < 0 ? ret : 0;
 }
 
-
 #ifdef MAXIM_DUMP
-static void maxim_ovsensor_dump_regs(struct i2c_client *client)
-{
-	int ret, i;
-	u8 val = 0;
-	u16 regs[] = {0x300a, 0x300b, 0x300c};
-
-	dev_dbg(&client->dev, "dump regs 0x%x\n", client->addr);
-
-	for (i = 0; i < sizeof(regs) / 2; i++) {
-		ret = reg16_read(client, regs[i], &val);
-		if (ret < 0)
-			dev_err(&client->dev,
-				"read fail: chip 0x%x register 0x%02x: %d\n",
-				client->addr, regs[i], ret);
-		printk("0x%02x -> 0x%x\n", regs[i], val);
-	}
-}
-
-static void maxim_ov10635_dump_format_regs(struct i2c_client *client)
-{
-	int ret, i;
-	u8 val;
-	u16 regs[] = {0x3003, 0x3004, 0x4300,
-		      0x4605, 0x3621, 0x3702, 0x3703, 0x3704,
-		      0x3802, 0x3803, 0x3806, 0x3807, 0x3808, 0x3809, 0x380a,
-		      0x380b, 0x380c, 0x380d, 0x380e, 0x380f,
-		      0x4606, 0x4607, 0x460a, 0x460b,
-		      0xc488, 0xc489, 0xc48a, 0xc48b,
-		      0xc4cc, 0xc4cd, 0xc4ce, 0xc4cf, 0xc512, 0xc513,
-		      0xc518, 0xc519, 0xc51a, 0xc51b,
-	};
-
-	dev_dbg(&client->dev, "dump regs 0x%x\n", client->addr);
-
-	for (i = 0; i < sizeof(regs) / 2; i++) {
-		ret = reg16_read(client, regs[i], &val);
-		if (ret < 0)
-			dev_err(&client->dev,
-				"read fail: chip 0x%x register 0x%02x: %d\n",
-				client->addr, regs[i], ret);
-		printk("0x%02x -> 0x%x\n", regs[i], val);
-	}
-}
-
 static void maxim_max927x_dump_regs(struct i2c_client *client)
 {
 	int ret;
@@ -242,4 +199,4 @@ static void maxim_max927x_dump_regs(struct i2c_client *client)
 	}
 }
 #endif /* MAXIM_DUMP */
-#endif /* _MAX9286_MAX9271_H */
+#endif /* _MAX92XX_H */

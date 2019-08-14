@@ -1574,6 +1574,7 @@ static struct v4l2_subdev *find_deser(struct rcar_vin_priv *pcdev)
 	struct v4l2_subdev *sd;
 	char name[] = "max9286";
 	char name2[] = "ti9x4";
+	char name3[] = "max9288";
 
 	v4l2_device_for_each_subdev(sd, &pcdev->ici.v4l2_dev) {
 		if (!strncmp(name, sd->name, sizeof(name) - 1)) {
@@ -1581,6 +1582,10 @@ static struct v4l2_subdev *find_deser(struct rcar_vin_priv *pcdev)
 			return sd;
 		}
 		if (!strncmp(name2, sd->name, sizeof(name2) - 1)) {
+			pcdev->deser_sd = sd;
+			return sd;
+		}
+		if (!strncmp(name3, sd->name, sizeof(name3) - 1)) {
 			pcdev->deser_sd = sd;
 			return sd;
 		}
@@ -3051,10 +3056,11 @@ static int rcar_vin_probe(struct platform_device *pdev)
 	const char *str;
 	unsigned int i;
 	struct device_node *epn = NULL, *ren = NULL;
-	struct device_node *csi2_ren = NULL, *max9286_ren = NULL, *ti9x4_ren = NULL;
+	struct device_node *csi2_ren = NULL, *max9286_ren = NULL, *ti9x4_ren = NULL, *max9288_ren = NULL;
 	bool csi_use = false;
 	bool max9286_use = false;
 	bool ti9x4_use = false;
+	bool max9288_use = false;
 
 	match = of_match_device(of_match_ptr(rcar_vin_of_table), &pdev->dev);
 
@@ -3094,6 +3100,11 @@ static int rcar_vin_probe(struct platform_device *pdev)
 		if (strcmp(ren->parent->name, "ti9x4") == 0) {
 			ti9x4_ren = of_parse_phandle(epn, "remote-endpoint", 0);
 			ti9x4_use = true;
+		}
+
+		if (strcmp(ren->parent->name, "max9288") == 0) {
+			max9288_ren = of_parse_phandle(epn, "remote-endpoint", 0);
+			max9288_use = true;
 		}
 
 		of_node_put(ren);
@@ -3368,6 +3379,12 @@ static int rcar_vin_probe(struct platform_device *pdev)
 
 	if (ti9x4_use) {
 		ret = rcar_vin_soc_of_bind(priv, &priv->ici, epn, ti9x4_ren);
+		if (ret)
+			goto cleanup;
+	}
+
+	if (max9288_use) {
+		ret = rcar_vin_soc_of_bind(priv, &priv->ici, epn, max9288_ren);
 		if (ret)
 			goto cleanup;
 	}
