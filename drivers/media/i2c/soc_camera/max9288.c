@@ -154,6 +154,27 @@ static char* ser_name(int id)
 	}
 }
 
+static void max9288_write_remote_verify(struct i2c_client *client, u8 reg, u8 val)
+{
+	struct max9288_priv *priv = i2c_get_clientdata(client);
+	int timeout;
+
+	for (timeout = 0; timeout < 10; timeout++) {
+		u8 val2 = 0;
+
+		reg8_write(client, reg, val);
+		reg8_read(client, reg, &val2);
+		if (val2 == val)
+			break;
+
+		usleep_range(1000, 1500);
+	}
+
+	if (timeout >= 10)
+		dev_err(&client->dev, "timeout remote write acked\n");
+}
+
+
 static void max9288_preinit(struct i2c_client *client, int addr)
 {
 
@@ -501,7 +522,7 @@ static int max9288_s_power(struct v4l2_subdev *sd, int on)
 	struct i2c_client *client = priv->client;
 
 	client->addr = priv->max9271_addr;			/* MAX9271-CAMx I2C new */
-	reg8_write(client, 0x04, on ? (conf_link ? 0x43 : 0x83) : 0x43); /* enable serial_link or conf_link */
+	max9288_write_remote_verify(client, 0x04, on ? (conf_link ? 0x43 : 0x83) : 0x43); /* enable serial_link or conf_link */
 	usleep_range(2000, 2500);				/* wait 2ms after changing reverse_control */
 	client->addr = priv->des_addr;				/* MAX9288-CAMx I2C */
 
