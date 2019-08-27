@@ -329,13 +329,8 @@ static int pca953x_gpio_get_value(struct gpio_chip *gc, unsigned off)
 	mutex_lock(&chip->i2c_lock);
 	ret = pca953x_read_single(chip, chip->regs->input, &reg_val, off);
 	mutex_unlock(&chip->i2c_lock);
-	if (ret < 0) {
-		/* NOTE:  diagnostic already emitted; that's all we should
-		 * do unless gpio_*_value_cansleep() calls become different
-		 * from their nonsleeping siblings (and report faults).
-		 */
-		return 0;
-	}
+	if (ret < 0)
+		return ret;
 
 	return (reg_val & (1u << (off % BANK_SZ))) ? 1 : 0;
 }
