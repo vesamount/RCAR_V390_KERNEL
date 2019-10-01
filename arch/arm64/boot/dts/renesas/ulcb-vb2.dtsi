@@ -38,13 +38,6 @@
 		};
 	};
 
-	snd_clk: snd_clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24576000>;
-		clock-output-names = "scki";
-	};
-
 	vcc_sdhi3: regulator-vcc-sdhi3 {
 		compatible = "regulator-fixed";
 
@@ -90,28 +83,6 @@
 		regulator-max-microvolt = <3300000>;
 		gpio = <&gpio_ext_pwr 9 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
-	};
-
-	/delete-node/sound;
-
-	rsnd_ak4613: sound@0 {
-		pinctrl-0 = <&sound_0_pins>;
-		pinctrl-names = "default";
-		compatible = "simple-audio-card";
-
-		simple-audio-card,format = "left_j";
-		simple-audio-card,name = "ak4613";
-
-		simple-audio-card,bitclock-master = <&sndcpu>;
-		simple-audio-card,frame-master = <&sndcpu>;
-
-		sndcpu: simple-audio-card,cpu@1 {
-			sound-dai = <&rcar_sound>;
-		};
-
-		sndcodec: simple-audio-card,codec@1 {
-			sound-dai = <&ak4613>;
-		};
 	};
 
 	lvds {
@@ -205,13 +176,6 @@
 		function = "hscif4";
 	};
 
-	/delete-node/sound;
-
-	sound_0_pins: sound1 {
-		groups = "ssi01239_ctrl", "ssi0_data", "ssi1_data_a";
-		function = "ssi";
-	};
-
 	usb0_pins: usb0 {
 		groups = "usb0";
 		function = "usb0";
@@ -226,7 +190,6 @@
 		groups = "usb30";
 		function = "usb30";
 	};
-
 
 	can0_pins: can0 {
 		groups = "can0_data_a";
@@ -1557,13 +1520,6 @@
 			csi-rate = <300>;
 		};
 	};
-};
-
-&rcar_sound {
-	pinctrl-0 = <&sound_clk_pins>;
-
-	/* Multi DAI */
-	#sound-dai-cells = <1>;
 };
 
 &ssi1 {
