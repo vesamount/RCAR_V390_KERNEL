@@ -133,6 +133,67 @@ static inline int reg16_write(struct i2c_client *client, u16 reg, u8 val)
 	return ret < 0 ? ret : 0;
 }
 
+static inline int reg16_read_n(struct i2c_client *client, u16 reg, u8 *val, int n)
+{
+	int ret, retries;
+	u8 buf[2] = {reg >> 8, reg & 0xff};
+
+	for (retries = REG16_NUM_RETRIES; retries; retries--) {
+		ret = i2c_master_send(client, buf, 2);
+		if (ret == 2) {
+			ret = i2c_master_recv(client, val, n);
+			if (ret == n)
+				break;
+		}
+	}
+
+	if (ret < 0) {
+		dev_dbg(&client->dev,
+			"read fail: chip 0x%x registers 0x%x-0x%x: %d\n",
+			client->addr, reg, reg + n, ret);
+	}
+
+	return ret < 0 ? ret : 0;
+}
+
+static inline int reg16_write_n(struct i2c_client *client, u16 reg, const u8* val, int n)
+{
+	int ret, retries;
+	u8 buf[2 + n];
+
+	buf[0] = reg >> 8;
+	buf[1] = reg & 0xff;
+	memcpy(&buf[2], val, n);
+
+	for (retries = REG16_NUM_RETRIES; retries; retries--) {
+		ret = i2c_master_send(client, buf, 2 + n);
+		if (ret == 2 + n)
+			break;
+	}
+
+	if (ret < 0) {
+		dev_dbg(&client->dev,
+			"write fail: chip 0x%x register 0x%x-0x%x: %d\n",
+			client->addr, reg, reg + n, ret);
+	} else {
+#ifndef WRITE_VERIFY
+		u8 val2[n];
+		ret = reg16_read_n(client, reg, val2, n);
+		if (ret < 0)
+			return ret;
+
+		if (memcmp(val, val2, n)) {
+			dev_err(&client->dev,
+				"write verify mismatch: chip 0x%x reg=0x%x-0x%x "
+				"'%*phN'->'%*phN'\n", client->addr, reg, reg + n,
+				n, val, n, val2);
+				ret = -EBADE;
+		}
+#endif
+	}
+
+	return ret < 0 ? ret : 0;
+}
 
 static inline int reg16_read16(struct i2c_client *client, u16 reg, u16 *val)
 {

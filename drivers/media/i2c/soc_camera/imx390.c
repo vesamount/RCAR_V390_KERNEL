@@ -213,15 +213,17 @@ static int imx390_g_register(struct v4l2_subdev *sd,
 			    struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	u32 s = reg->size;
 	int ret;
-	u8 val = 0;
 
-	ret = reg16_read(client, (u16)reg->reg, &val);
+	if (!s)
+		s = 4;
+	if (s > sizeof(reg->val))
+		s = sizeof(reg->val);
+
+	ret = reg16_read_n(client, (u16)reg->reg, (u8*)&reg->val, s);
 	if (ret < 0)
 		return ret;
-
-	reg->val = val;
-	reg->size = sizeof(u8);
 
 	return 0;
 }
@@ -230,8 +232,14 @@ static int imx390_s_register(struct v4l2_subdev *sd,
 			    const struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	u32 s = reg->size;
 
-	return reg16_write(client, (u16)reg->reg, (u8)reg->val);
+	if (!s)
+		s = 4;
+	if (s > sizeof(reg->val))
+		s = sizeof(reg->val);
+
+	return reg16_write_n(client, (u16)reg->reg, (u8*)&reg->val, s);
 }
 #endif
 
