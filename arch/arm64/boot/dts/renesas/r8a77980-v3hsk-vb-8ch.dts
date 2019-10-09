@@ -142,7 +142,7 @@
 	pinctrl-names = "default";
 	status = "okay";
 
-	clock-frequency = <100000>;
+	clock-frequency = <400000>;
 
 	i2cswitch1: i2c-switch@74 {
 		compatible = "nxp,pca9548";
