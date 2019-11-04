@@ -1,0 +1,22 @@
+/*
+ * Device Tree Source for the Salvator-X.View board
+ *
+ * Copyright (C) 2016-2017 Renesas Electronics Corp.
+ * Copyright (C) 2015-2017 Cogent Embedded, Inc
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "r8a7795-salvator-x.dts"
+
+/ {
+	model = "Renesas Salvator-X.View board based on r8a7795 version ITRI";
+
+};
+
+&i2c4 {
+	/delete-node/hdmi-in@34;
+	/delete-node/composite-in@70;
+};
