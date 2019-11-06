@@ -19,4 +19,584 @@
 &i2c4 {
 	/delete-node/hdmi-in@34;
 	/delete-node/composite-in@70;
+
+
+	i2cswitch: i2c-switch@71 {
+		status = "okay";
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>;
+		reset-gpios = <&gpio5 3 GPIO_ACTIVE_HIGH>;
+		i2c-mux-idle-disconnect;
+
+        i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+
+            tp2854_subcam@0 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x40>;
+                port@1 {
+                    tp2854_subcam_ser00ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr0ep0>;
+                    };
+                };
+                port@0 {
+                    tp2854_subcam_in00: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin0ep0>;
+                    };
+                };
+            };
+
+            tp2854_subcam@1 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x41>;
+                port@1 {
+                    tp2854_subcam_ser01ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr0ep1>;
+                    };
+                };
+
+                port@0 {
+                    tp2854_subcam_in01: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin1ep0>;
+                    };
+                };
+
+            };
+            tp2854_subcam@2 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x42>;
+                port@1 {
+                    tp2854_subcam_ser02ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr0ep2>;
+                    };
+                };
+                port@0 {
+                    tp2854_subcam_in02: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin2ep0>;
+                    };
+                };
+
+            };
+            tp2854_subcam@3 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x43>;
+                port@1 {
+                    tp2854_subcam_ser03ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr0ep3>;
+                    };
+                };
+
+                port@0 {
+                    tp2854_subcam_in03: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin3ep0>;
+                    };
+                };
+
+            };
+
+
+            /* TP2854 @ slasve address 0x45 (7bit) */
+            tp2854@0 {
+                status = "okay";
+                compatible = "techpoint,tp2854";
+                reg = <0x45>;
+                lanes = <4>;
+                npxl = <2>;
+                /*******************************
+                *  MODE                Value
+                *  720P  60 frame      npxl = 0
+                *  720P  50 frame      npxl = 1
+                *  720P  30 frame      npxl = 2
+                *  720P  25 frame      npxl = 3
+                *  1080P 30 frame      npxl = 4
+                *  1080P 25 frame      npxl = 5
+                *  480i                npxl = 6
+                *  576i                npxl = 7
+                *
+                ********************************/
+
+                tvi-clk = <0>;
+                /*******************************
+                * MODE
+                * 0 : 74.25 M Hz for TVI 2.0
+                * 1 : 148.5 M Hz for TVI 1.0
+                ********************************/
+
+                port@0 {
+                    tp2854_tvidsr0ep0: endpoint@0 {
+                        remote-endpoint = <&tp2854_subcam_in00>;
+                    };
+                    tp2854_tvidsr0ep1: endpoint@1 {
+                        remote-endpoint = <&tp2854_subcam_in01>;
+                    };
+                    tp2854_tvidsr0ep2: endpoint@2 {
+                        remote-endpoint = <&tp2854_subcam_in02>;
+                    };
+                    tp2854_tvidsr0ep3: endpoint@3 {
+                        remote-endpoint = <&tp2854_subcam_in03>;
+                    };
+                };
+                port@1 {
+                    tp2854_csi0ep0: endpoint {
+                        csi-rate = <300>;
+                        remote-endpoint = <&csi40_ep>;
+                    };
+                };
+            };
+        };
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+            tp2854_subcam@4 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x50>;
+                port@1 {
+                    tp2854_subcam_ser04ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr1ep0>;
+                    };
+                };
+                port@0 {
+                    tp2854_subcam_in04: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin4ep0>;
+                    };
+                };
+            };
+
+            tp2854_subcam@5 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x51>;
+                port@1 {
+                    tp2854_subcam_ser05ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr1ep1>;
+                    };
+                };
+
+                port@0 {
+                    tp2854_subcam_in05: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin5ep0>;
+                    };
+                };
+
+            };
+            tp2854_subcam@6 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x52>;
+                port@1 {
+                    tp2854_subcam_ser06ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr1ep2>;
+                    };
+                };
+                port@0 {
+                    tp2854_subcam_in06: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin6ep0>;
+                    };
+                };
+
+            };
+            tp2854_subcam@7 {
+                status = "okay";
+                compatible = "tp,tp2854_subcam";
+                reg = <0x53>;
+                port@1 {
+                    tp2854_subcam_ser07ep: endpoint@0 {
+                        remote-endpoint = <&tp2854_tvidsr1ep3>;
+                    };
+                };
+
+                port@0 {
+                    tp2854_subcam_in07: endpoint {
+                        clock-lanes = <0>;
+                        data-lanes = <1 2 3 4>;
+                        remote-endpoint = <&vin7ep0>;
+                    };
+                };
+
+            };
+
+
+            /* TP2854 @ slasve address 0x44 (7bit) */
+            tp2854@1 {
+                status = "okay";
+                compatible = "techpoint,tp2854";
+                reg = <0x44>;
+                lanes = <4>;
+                npxl = <2>;
+                /*******************************
+                *  MODE                Value
+                *  720P  60 frame      npxl = 0
+                *  720P  50 frame      npxl = 1
+                *  720P  30 frame      npxl = 2
+                *  720P  25 frame      npxl = 3
+                *  1080P 30 frame      npxl = 4
+                *  1080P 25 frame      npxl = 5
+                *  480i                npxl = 6
+                *  576i                npxl = 7
+                *
+                ********************************/
+
+                tvi-clk = <0>;
+                /*******************************
+                * MODE
+                * 0 : 74.25 M Hz for TVI 2.0
+                * 1 : 148.5 M Hz for TVI 1.0
+                ********************************/
+
+                port@0 {
+                    tp2854_tvidsr1ep0: endpoint@0 {
+                        remote-endpoint = <&tp2854_subcam_in04>;
+                    };
+                    tp2854_tvidsr1ep1: endpoint@1 {
+                        remote-endpoint = <&tp2854_subcam_in05>;
+                    };
+                    tp2854_tvidsr1ep2: endpoint@2 {
+                        remote-endpoint = <&tp2854_subcam_in06>;
+                    };
+                    tp2854_tvidsr1ep3: endpoint@3 {
+                        remote-endpoint = <&tp2854_subcam_in07>;
+                    };
+                };
+                port@1 {
+                    tp2854_csi1ep0: endpoint {
+                        csi-rate = <300>;
+                        remote-endpoint = <&csi41_ep>;
+                    };
+                };
+            };
+        };
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+            tw8836@0x45 {
+                compatible = "TW8836";
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg = <0x45>;
+            };
+
+            tp2912@0x44 {
+                compatible = "TP2912";
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg = <0x44>;
+                loop_test = <1>;
+            };
+		};
+
+	};
+};
+
+
+&csi40 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "ycbcr422";
+			receive,vc = <0>;
+		};
+		csi2_vc1 {
+			data,type = "ycbcr422";
+			receive,vc = <1>;
+		};
+		csi2_vc2 {
+			data,type = "ycbcr422";
+			receive,vc = <2>;
+		};
+		csi2_vc3 {
+			data,type = "ycbcr422";
+			receive,vc = <3>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi40_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2 3 4>;
+			csi-rate = <300>;
+		};
+	};
+};
+
+&csi41 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "ycbcr422";
+			receive,vc = <0>;
+		};
+		csi2_vc1 {
+			data,type = "ycbcr422";
+			receive,vc = <1>;
+		};
+		csi2_vc2 {
+			data,type = "ycbcr422";
+			receive,vc = <2>;
+		};
+		csi2_vc3 {
+			data,type = "ycbcr422";
+			receive,vc = <3>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi41_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2 3 4>;
+			csi-rate = <300>;
+		};
+	};
+};
+
+
+&vin0 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        port@0 {
+            vin0ep0: endpoint {
+                csi,select = "csi40";
+                virtual,channel = <0>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in00>;
+            };
+        };
+        port@1 {
+            csi0ep0: endpoint {
+                    remote-endpoint = <&csi40_ep>;
+            };
+        };
+        port@2 {
+            vin0_tp2854_tvi0dsrep0: endpoint@2 {
+                    remote-endpoint = <&tp2854_tvidsr0ep0>;
+            };
+        };
+    };
+};
+
+&vin1 {
+    status = "okay";
+
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@0 {
+            vin1ep0: endpoint {
+                csi,select = "csi40";
+                virtual,channel = <1>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in01>;
+            };
+        };
+        port@1 {
+            csi0ep1: endpoint {
+                remote-endpoint = <&csi40_ep>;
+            };
+        };
+        port@2 {
+            vin1_tp2854_tvi0ep1: endpoint@2 {
+                remote-endpoint = <&tp2854_tvidsr0ep1>;
+            };
+        };
+    };
+};
+
+&vin2 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@0 {
+            vin2ep0: endpoint {
+                csi,select = "csi40";
+                virtual,channel = <2>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in02>;
+            };
+        };
+        port@1 {
+            csi0ep2: endpoint {
+                    remote-endpoint = <&csi40_ep>;
+            };
+        };
+        port@2 {
+            vin2_tp2854_tvi0ep2: endpoint@2 {
+                    remote-endpoint = <&tp2854_tvidsr0ep2>;
+            };
+        };
+    };
+};
+
+&vin3 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        port@0 {
+            vin3ep0: endpoint {
+                csi,select = "csi40";
+                virtual,channel = <3>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in03>;
+            };
+        };
+        port@1 {
+            csi0ep3: endpoint {
+                remote-endpoint = <&csi40_ep>;
+            };
+        };
+        port@2 {
+            vin3_tp2854_tvi0ep3: endpoint@3 {
+                    remote-endpoint = <&tp2854_tvidsr0ep3>;
+            };
+        };
+    };
+};
+
+
+&vin4 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        port@0 {
+            vin4ep0: endpoint {
+                csi,select = "csi41";
+                virtual,channel = <0>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in04>;
+            };
+        };
+        port@1 {
+            csi0ep4: endpoint {
+                    remote-endpoint = <&csi41_ep>;
+            };
+        };
+        port@2 {
+            vin4_tp2854_tvi0dsrep4: endpoint@2 {
+                    remote-endpoint = <&tp2854_tvidsr1ep0>;
+            };
+        };
+    };
+};
+
+&vin5 {
+    status = "okay";
+
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@0 {
+            vin5ep0: endpoint {
+                csi,select = "csi41";
+                virtual,channel = <1>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in05>;
+            };
+        };
+        port@1 {
+            csi0ep5: endpoint {
+                remote-endpoint = <&csi41_ep>;
+            };
+        };
+        port@2 {
+            vin5_tp2854_tvi0ep5: endpoint@2 {
+                remote-endpoint = <&tp2854_tvidsr1ep1>;
+            };
+        };
+    };
+};
+
+&vin6 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@0 {
+            vin6ep0: endpoint {
+                csi,select = "csi41";
+                virtual,channel = <2>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in06>;
+            };
+        };
+        port@1 {
+            csi0ep6: endpoint {
+                    remote-endpoint = <&csi41_ep>;
+            };
+        };
+        port@2 {
+            vin6_tp2854_tvi0ep6: endpoint@2 {
+                    remote-endpoint = <&tp2854_tvidsr1ep2>;
+            };
+        };
+    };
+};
+
+&vin7 {
+    status = "okay";
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        port@0 {
+            vin7ep0: endpoint {
+                csi,select = "csi41";
+                virtual,channel = <3>;
+                data-lanes = <1 2 3 4>;
+                remote-endpoint = <&tp2854_subcam_in07>;
+            };
+        };
+        port@1 {
+            csi0ep7: endpoint {
+                remote-endpoint = <&csi41_ep>;
+            };
+        };
+        port@2 {
+            vin3_tp2854_tvi0ep7: endpoint@3 {
+                    remote-endpoint = <&tp2854_tvidsr1ep3>;
+            };
+        };
+    };
 };
