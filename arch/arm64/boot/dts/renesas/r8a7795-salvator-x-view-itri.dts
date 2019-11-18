@@ -600,3 +600,20 @@
         };
     };
 };
+
+
+&imrlx4_ch0 {
+    status = "disabled";
+};
+
+&imrlx4_ch1 {
+    status = "disabled";
+};
+
+&imrlx4_ch2 {
+    status = "disabled";
+};
+
+&imrlx4_ch3 {
+    status = "disabled";
+};
