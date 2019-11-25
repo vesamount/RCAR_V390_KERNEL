@@ -617,3 +617,10 @@
 &imrlx4_ch3 {
     status = "disabled";
 };
+
+&sdhi0 {
+    /delete-property/ sd-uhs-sdr50;
+    /delete-property/ sd-uhs-sdr104;
+    sd-uhs-sdr25;
+    status = "okay";
+};
