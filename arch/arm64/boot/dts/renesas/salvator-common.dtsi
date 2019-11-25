@@ -764,8 +764,9 @@
 	cd-gpios = <&gpio3 12 GPIO_ACTIVE_LOW>;
 	wp-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
 	bus-width = <4>;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
+	//sd-uhs-sdr50;
+	//sd-uhs-sdr104;
+    sd-uhs-sdr25;
 	status = "okay";
 };
 
@@ -786,20 +787,20 @@
 	status = "okay";
 };
 
-&sdhi3 {
-	pinctrl-0 = <&sdhi3_pins>;
-	pinctrl-1 = <&sdhi3_pins_uhs>;
-	pinctrl-names = "default", "state_uhs";
-
-	vmmc-supply = <&vcc_sdhi3>;
-	vqmmc-supply = <&vccq_sdhi3>;
-	cd-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
-	wp-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-	bus-width = <4>;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
-	status = "okay";
-};
+//&sdhi3 {
+//	pinctrl-0 = <&sdhi3_pins>;
+//	pinctrl-1 = <&sdhi3_pins_uhs>;
+//	pinctrl-names = "default", "state_uhs";
+//
+//	vmmc-supply = <&vcc_sdhi3>;
+//	vqmmc-supply = <&vccq_sdhi3>;
+//	cd-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
+//	wp-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
+//	bus-width = <4>;
+//	sd-uhs-sdr50;
+//	sd-uhs-sdr104;
+//	status = "disabled";
+//};
 
 &ssi1 {
 	shared-pin;
