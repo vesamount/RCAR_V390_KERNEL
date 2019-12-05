@@ -12,23 +12,69 @@
 #include "r8a7795-salvator-x.dts"
 
 / {
-	model = "Renesas Salvator-X.View board based on r8a7795 version ITRI";
+    model = "Renesas Salvator-X.View board based on r8a7795 version ITRI";
 
+    /delete-node/lvds;
+
+    lvds {
+        compatible = "panel-lvds";
+        width-mm = <210>;
+        height-mm = <100>;
+        data-mapping = "vesa-24";
+        enable-gpios = <&gpio6 7 GPIO_ACTIVE_HIGH>;
+
+        panel-timing {
+            /* 1280x720 @30Hz */
+            clock-frequency = <74250000>;
+            hactive = <1280>;
+            vactive = <720>;
+            hsync-len = <20>;
+            hfront-porch = <130>;
+            hback-porch = <260>;
+            vfront-porch = <5>;
+            vback-porch = <20>;
+            vsync-len = <10>;
+        };
+
+        port {
+            lvds_in: endpoint {
+                remote-endpoint = <&du_out_lvds0>;
+            };
+        };
+    };
+
+    /delete-node/cvbs-in;
+    /delete-node/hdmi-in;
+    /delete-node/vga-encoder;
+    /delete-node/vga;
+};
+
+
+&du {
+    pinctrl-0 = <&du_pins>;
+    pinctrl-names = "default";
+    status = "okay";
+
+    ports {
+        /delete-node/port@0;
+    };
 };
 
 &i2c4 {
-	/delete-node/hdmi-in@34;
-	/delete-node/composite-in@70;
+    /delete-node/hdmi-in@34;
+    /delete-node/composite-in@70;
+    /delete-node/adc@7c;
+    /delete-node/adc@7f;
+    /delete-node/video-receiver@70;
 
-
-	i2cswitch: i2c-switch@71 {
-		status = "okay";
-		compatible = "nxp,pca9548";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x71>;
-		reset-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
-		i2c-mux-idle-disconnect;
+    i2cswitch: i2c-switch@71 {
+        status = "okay";
+        compatible = "nxp,pca9548";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+        reset-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+        i2c-mux-idle-disconnect;
 
         i2c@0 {
             #address-cells = <1>;
@@ -131,7 +177,7 @@
                 *
                 ********************************/
 
-                tvi-clk = <0>;
+                tvi-clk = <1>;
                 /*******************************
                 * MODE
                 * 0 : 74.25 M Hz for TVI 2.0
@@ -161,10 +207,10 @@
             };
         };
 
-		i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
+        i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
 
             tp2854_subcam@4 {
                 status = "okay";
@@ -262,7 +308,7 @@
                 *
                 ********************************/
 
-                tvi-clk = <0>;
+                tvi-clk = <1>;
                 /*******************************
                 * MODE
                 * 0 : 74.25 M Hz for TVI 2.0
@@ -292,10 +338,10 @@
             };
         };
 
-		i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
+        i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
 
             tw8836@0x45 {
                 compatible = "TW8836";
@@ -311,78 +357,77 @@
                 reg = <0x44>;
                 loop_test = <1>;
             };
-		};
+        };
 
-	};
+    };
 };
 
 
 &csi40 {
-	status = "okay";
+    status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
+    virtual,channel {
+        csi2_vc0 {
+            data,type = "ycbcr422";
+            receive,vc = <0>;
+        };
+        csi2_vc1 {
+            data,type = "ycbcr422";
+            receive,vc = <1>;
+        };
+        csi2_vc2 {
+            data,type = "ycbcr422";
+            receive,vc = <2>;
+        };
+        csi2_vc3 {
+            data,type = "ycbcr422";
+            receive,vc = <3>;
+        };
+    };
 
-	port {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		csi40_ep: endpoint {
-			clock-lanes = <0>;
-			data-lanes = <1 2 3 4>;
-			csi-rate = <300>;
-		};
-	};
+    port {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        csi40_ep: endpoint {
+            clock-lanes = <0>;
+            data-lanes = <1 2 3 4>;
+            csi-rate = <300>;
+        };
+    };
 };
 
 &csi41 {
-	status = "okay";
+    status = "okay";
 
-	virtual,channel {
-		csi2_vc0 {
-			data,type = "ycbcr422";
-			receive,vc = <0>;
-		};
-		csi2_vc1 {
-			data,type = "ycbcr422";
-			receive,vc = <1>;
-		};
-		csi2_vc2 {
-			data,type = "ycbcr422";
-			receive,vc = <2>;
-		};
-		csi2_vc3 {
-			data,type = "ycbcr422";
-			receive,vc = <3>;
-		};
-	};
+    virtual,channel {
+        csi2_vc0 {
+            data,type = "ycbcr422";
+            receive,vc = <0>;
+        };
+        csi2_vc1 {
+            data,type = "ycbcr422";
+            receive,vc = <1>;
+        };
+        csi2_vc2 {
+            data,type = "ycbcr422";
+            receive,vc = <2>;
+        };
+        csi2_vc3 {
+            data,type = "ycbcr422";
+            receive,vc = <3>;
+        };
+    };
 
-	port {
-		#address-cells = <1>;
-		#size-cells = <0>;
+    port {
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-		csi41_ep: endpoint {
-			clock-lanes = <0>;
-			data-lanes = <1 2 3 4>;
-			csi-rate = <300>;
-		};
-	};
+        csi41_ep: endpoint {
+            clock-lanes = <0>;
+            data-lanes = <1 2 3 4>;
+            csi-rate = <300>;
+        };
+    };
 };
 
 
